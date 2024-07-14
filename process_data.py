@@ -5,10 +5,19 @@ from torch.utils.data.dataset import Dataset
 import os
 import json
 
-def process_data(dataset_name, output_path):
-    json_data = json.load(open(f"data/{dataset_name}"))
-    
-    
+def process_data(dataset_file, output_path):
+    with open(dataset_file) as f:
+        json_data = json.load(f)
+
+    # Assuming json_data is a list of dictionaries, we need to extract the numerical data
+    data_list = []
+    for entry in json_data:
+        hand_data = entry['handData']  # Extract the 'handData' field
+        data_list.append(hand_data)
+
+    # Convert the list of lists to a torch tensor
+    data_tensor = torch.tensor(data_list)
+    torch.save(data_tensor, output_path+"/"+dataset_file.split("/")[-1].split(".")[0]+".pt")
     
 def split():
     full_dataset = os.listdir("data")
@@ -18,11 +27,11 @@ def split():
     
     print("Processing training data")
     for dataset_name in train_dataset:
-        process_data(dataset_name, "train_data")
+        process_data("data/"+dataset_name, "train_data")
     
     print("Processing testing data")
     for dataset_name in test_dataset:
-        process_data(dataset_name, "test_data")
+        process_data("data/"+dataset_name, "test_data")
     
 def main():
     split()

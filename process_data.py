@@ -9,14 +9,15 @@ def process_data(dataset_file, output_path):
     with open(dataset_file) as f:
         json_data = json.load(f)
 
-    # Assuming json_data is a list of dictionaries, we need to extract the numerical data
     data_list = []
     for entry in json_data:
         hand_data = entry['handData']  # Extract the 'handData' field
-        data_list.append(hand_data)
+        confidence = entry['confidence']  # Extract the 'confidence' field
+        combined_data = hand_data + [confidence]
+        data_list.append(combined_data)
 
     # Convert the list of lists to a torch tensor
-    data_tensor = torch.tensor(data_list)
+    data_tensor = torch.tensor(data_list, dtype=torch.float32)
     torch.save(data_tensor, output_path+"/"+dataset_file.split("/")[-1].split(".")[0]+".pt")
     
 def split():

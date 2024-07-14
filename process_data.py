@@ -11,8 +11,8 @@ def process_data(dataset_file, output_path):
 
     data_list = []
     for entry in json_data:
-        hand_data = entry['handData']  # Extract the 'handData' field
-        confidence = entry['confidence']  # Extract the 'confidence' field
+        hand_data = entry['handData']  
+        confidence = entry['confidence']  
         combined_data = hand_data + [confidence]
         data_list.append(combined_data)
 

@@ -5,7 +5,7 @@ from torch.utils.data.dataset import Dataset
 import os
 import json
 
-def process_data(dataset_file, output_path):
+def process_data(dataset_file):
     with open(dataset_file) as f:
         json_data = json.load(f)
 
@@ -17,8 +17,7 @@ def process_data(dataset_file, output_path):
         data_list.append(combined_data)
 
     # Convert the list of lists to a torch tensor
-    data_tensor = torch.tensor(data_list, dtype=torch.float32)
-    torch.save(data_tensor, output_path+"/"+dataset_file.split("/")[-1].split(".")[0]+".pt")
+    return data_list
     
 def split():
     full_dataset = os.listdir("data")
@@ -27,12 +26,20 @@ def split():
     train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [train_size, test_size])
     
     print("Processing training data")
+    train = []
     for dataset_name in train_dataset:
-        process_data("data/"+dataset_name, "train_data")
+        train.extend(process_data("data/"+dataset_name))
+    
+    train_tensor = torch.tensor(train)
+    torch.save(train_tensor, "train_data/train_0.pt")
     
     print("Processing testing data")
+    test = []
     for dataset_name in test_dataset:
-        process_data("data/"+dataset_name, "test_data")
+        test.extend(process_data("data/"+dataset_name))
+    
+    test_tensor = torch.tensor(test)
+    torch.save(test_tensor, "test_data/test_0.pt")
     
 def main():
     split()

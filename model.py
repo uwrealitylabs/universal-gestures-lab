@@ -18,7 +18,7 @@ class FeedforwardNeuralNetModel(nn.Module):
         # Linear function
         self.fc1 = nn.Linear(input_dim, hidden_dim) 
         # Non-linearity
-        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
         # Linear function (readout)
         self.fc2 = nn.Linear(hidden_dim, output_dim)  
 
@@ -26,10 +26,10 @@ class FeedforwardNeuralNetModel(nn.Module):
         # Linear function
         out = self.fc1(x)
         # Non-linearity
-        out = self.tanh(out)
+        out = self.sigmoid(out)
         # Linear function (readout)
         out = self.fc2(out)
-        return out
+        return torch.sigmoid(out)
 
 # Data set
 def split_feature_label(data):
@@ -73,13 +73,13 @@ def main():
     criterion = nn.BCELoss()
     learning_rate = 0.01
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-    
+    iter = 0
     # for iteration in num_epochs:
     for epoch in range(num_epochs):
        for i, (X, Y) in enumerate(train_loader):
             Y = Y.view(-1, 1)
             optimizer.zero_grad()
-            outputs = model(X)
+            outputs = model(X.float())
             loss = criterion(outputs, Y.float())
             loss.backward()
             optimizer.step()

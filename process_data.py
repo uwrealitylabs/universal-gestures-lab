@@ -5,6 +5,8 @@ from torch.utils.data.dataset import Dataset
 import os
 import json
 
+# WILL NEED TO SOMEHOW MODIFY THE DATA TO SUPPORT > 2 CLASSES
+
 def process_data(dataset_file):
     with open(dataset_file) as f:
         json_data = json.load(f)

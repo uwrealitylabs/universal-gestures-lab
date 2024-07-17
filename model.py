@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
+import json
 from pprint import pprint
 output_dim = 1 # binary classification for thumbs up or down
 input_dim = 17 # 17 features
@@ -96,6 +97,16 @@ def main():
 
                 accuracy = 100 * correct / total
                 print('Iteration: {}. Loss: {}. Accuracy: {}'.format(iter, loss.item(), accuracy))
+
+
+    # Extract the model's state dictionary, convert to JSON serializable format
+    state_dict = model.state_dict()
+    serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+
+    # Store state dictionary
+    with open('trained_model/model_weights.json', 'w') as f:
+        json.dump(serializable_state_dict, f)
+    print("Model weights saved to trained_model/model_weights.json")
 
 if __name__ == "__main__":
     main()

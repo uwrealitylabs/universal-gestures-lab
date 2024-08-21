@@ -9,19 +9,25 @@ import os
 import matplotlib.pyplot as plt
 import json
 from pprint import pprint
-output_dim = 1 # binary classification for thumbs up or down
-input_dim = 17 # 17 features
+
+output_dim = 1  # binary classification for thumbs up or down
+input_dim = 17  # 17 features
+detect_threshold = 0.7  # threshold for classification as a thumbs up
+
+SAVE_MODEL_PATH = "trained_model/"
+SAVE_MODEL_FILENAME = "model_weights.json"
+
 
 # Model
 class FeedforwardNeuralNetModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(FeedforwardNeuralNetModel, self).__init__()
         # Linear function
-        self.fc1 = nn.Linear(input_dim, hidden_dim) 
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
         # Non-linearity
         self.sigmoid = nn.Sigmoid()
         # Linear function (readout)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)  
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         # Linear function
@@ -32,11 +38,13 @@ class FeedforwardNeuralNetModel(nn.Module):
         out = self.fc2(out)
         return torch.sigmoid(out)
 
+
 # Data set
 def split_feature_label(data):
     X = data[:, :-1]
     Y = data[:, -1]
     return X, Y
+
 
 class CustomDataset(torch.utils.data.Dataset):
     def __init__(self, data):
@@ -48,10 +56,12 @@ class CustomDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
 
+
 # Loader fn
 def load_data(dataset, batch_size=64):
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
+
 
 def main():
     train_path = "train_data/train_0.pt"
@@ -59,25 +69,29 @@ def main():
     train_data = torch.load(train_path)
     test_data = torch.load(test_path)
     batch_size = 64
-    n_iters = len(train_data) * 5 # 5 epochs
-    num_epochs = int(n_iters / (len(train_data)/batch_size))
-    
+    n_iters = len(train_data) * 5  # 5 epochs
+    num_epochs = int(n_iters / (len(train_data) / batch_size))
+
     X_train = torch.tensor(train_data[:, :-1])
     y_train = torch.tensor(train_data[:, -1])
-    train_loader = torch.utils.data.DataLoader(list(zip(X_train,y_train)), shuffle=True, batch_size=16)
-    
+    train_loader = torch.utils.data.DataLoader(
+        list(zip(X_train, y_train)), shuffle=True, batch_size=16
+    )
+
     X_test = torch.tensor(test_data[:, :-1])
     y_test = torch.tensor(test_data[:, -1])
-    test_loader = torch.utils.data.DataLoader(list(zip(X_test,y_test)), shuffle=True, batch_size=16)
-    
+    test_loader = torch.utils.data.DataLoader(
+        list(zip(X_test, y_test)), shuffle=True, batch_size=16
+    )
+
     model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
     criterion = nn.BCELoss()
-    learning_rate = 0.01
+    learning_rate = 0.0004
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     iter = 0
-    # for iteration in num_epochs:
+
     for epoch in range(num_epochs):
-       for i, (X, Y) in enumerate(train_loader):
+        for i, (X, Y) in enumerate(train_loader):
             Y = Y.view(-1, 1)
             optimizer.zero_grad()
             outputs = model(X.float())
@@ -85,28 +99,34 @@ def main():
             loss.backward()
             optimizer.step()
             iter += 1
-            
+
             if iter % 500 == 0:
                 correct = 0
                 total = 0
                 for X, Y in test_loader:
-                    outputs = model(X)
-                    _, predicted = torch.max(outputs.data, 1)
+                    outputs = model(X.float())
+                    predicted = (outputs > detect_threshold).float()
                     total += Y.size(0)
-                    correct += (predicted == Y).sum()
+                    correct += (predicted == Y.view(-1, 1)).sum().item()
 
                 accuracy = 100 * correct / total
-                print('Iteration: {}. Loss: {}. Accuracy: {}'.format(iter, loss.item(), accuracy))
-
+                print(
+                    "Iteration: {}. Loss: {}. Accuracy: {}".format(
+                        iter, loss.item(), accuracy
+                    )
+                )
 
     # Extract the model's state dictionary, convert to JSON serializable format
     state_dict = model.state_dict()
     serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
 
     # Store state dictionary
-    with open('trained_model/model_weights.json', 'w') as f:
+    with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
         json.dump(serializable_state_dict, f)
-    print("Model weights saved to trained_model/model_weights.json")
+
+    print("\n--- Model Training Complete ---")
+    print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
+
 
 if __name__ == "__main__":
     main()

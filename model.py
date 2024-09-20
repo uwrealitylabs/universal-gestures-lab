@@ -124,6 +124,12 @@ def main():
     with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
         json.dump(serializable_state_dict, f)
 
+    # Store as onnx for compatibility with Unity Barracuda
+    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, 17))
+    onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
+
+
+
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
 

@@ -22,24 +22,24 @@ def process_data(dataset_file):
     return data_list
     
 def split():
-    full_dataset = os.listdir("data")
+    data_files = os.listdir("data")
+    
+    print("Loading data files")
+    full_dataset = []
+    train = []
+    for dataset_name in data_files:
+        full_dataset.extend(process_data("data/"+dataset_name))
+
+    print("Splitting data into training and testing")
     train_size =  int(0.8 * len(full_dataset))
     test_size = len(full_dataset) - train_size
-    train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [train_size, test_size])
-    
+    train, test= torch.utils.data.random_split(full_dataset, [train_size, test_size])
+
     print("Processing training data")
-    train = []
-    for dataset_name in train_dataset:
-        train.extend(process_data("data/"+dataset_name))
-    
     train_tensor = torch.tensor(train)
     torch.save(train_tensor, "train_data/train_0.pt")
     
     print("Processing testing data")
-    test = []
-    for dataset_name in test_dataset:
-        test.extend(process_data("data/"+dataset_name))
-    
     test_tensor = torch.tensor(test)
     torch.save(test_tensor, "test_data/test_0.pt")
     

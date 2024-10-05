@@ -11,11 +11,11 @@ import json
 from pprint import pprint
 
 output_dim = 1  # binary classification for thumbs up or down
-input_dim = 17  # 17 features
+input_dim = 44  # 44 features
 detect_threshold = 0.7  # threshold for classification as a thumbs up
 
 SAVE_MODEL_PATH = "trained_model/"
-SAVE_MODEL_FILENAME = "model_weights.json"
+SAVE_MODEL_FILENAME = "model_two_hands_weights.json"
 
 
 # Model

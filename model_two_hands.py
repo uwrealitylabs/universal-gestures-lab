@@ -11,7 +11,7 @@ import json
 from pprint import pprint
 
 output_dim = 1  # binary classification for thumbs up or down
-input_dim = 45  # 17 features
+input_dim = 44  # 17 features
 detect_threshold = 0.7  # threshold for classification as a thumbs up
 
 SAVE_MODEL_PATH = "trained_model/"
@@ -125,7 +125,7 @@ def main():
         json.dump(serializable_state_dict, f)
 
     # Store as onnx for compatibility with Unity Barracuda
-    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, 45))
+    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
     onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
 
 

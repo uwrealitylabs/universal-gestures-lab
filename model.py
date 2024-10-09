@@ -11,9 +11,10 @@ import json
 from pprint import pprint
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
-output_dim = 1  # binary classification for thumbs up or down
+# changed to multi-class classification
+output_dim = 5  # 5 classes
 input_dim = 17  # 17 features
-detect_threshold = 0.7  # threshold for classification as a thumbs up
+detect_threshold = 0.7  # dont need anymore
 
 SAVE_MODEL_PATH = "trained_model/"
 SAVE_MODEL_FILENAME = "model_weights.json"
@@ -37,7 +38,8 @@ class FeedforwardNeuralNetModel(nn.Module):
         out = self.sigmoid(out)
         # Linear function (readout)
         out = self.fc2(out)
-        return torch.sigmoid(out)
+        # Returning raw logits without softmax (CrossEntropyLoss can deal w it)
+        return out  
 
 
 # Data set
@@ -74,56 +76,49 @@ def main():
     num_epochs = int(n_iters / (len(train_data) / batch_size))
 
     X_train = torch.tensor(train_data[:, :-1])
-    y_train = torch.tensor(train_data[:, -1])
+    y_train = torch.tensor(train_data[:, -1], dtype=torch.long)  
     train_loader = torch.utils.data.DataLoader(
         list(zip(X_train, y_train)), shuffle=True, batch_size=16
     )
 
     X_test = torch.tensor(test_data[:, :-1])
-    y_test = torch.tensor(test_data[:, -1])
+    y_test = torch.tensor(test_data[:, -1], dtype=torch.long)  
     test_loader = torch.utils.data.DataLoader(
         list(zip(X_test, y_test)), shuffle=True, batch_size=16
     )
 
     model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
-    criterion = nn.BCELoss()
+    
+    # Using CrossEntropyLoss 
+    criterion = nn.CrossEntropyLoss()
     learning_rate = 0.0004
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     iter = 0
 
     for epoch in range(num_epochs):
         for i, (X, Y) in enumerate(train_loader):
-            Y = Y.view(-1, 1)
-            optimizer.zero_grad()
-            outputs = model(X.float())
-            loss = criterion(outputs, Y.float())
-            loss.backward()
-            optimizer.step()
+            optimizer.zero_grad()  # Zero the gradients before the backward pass
+            outputs = model(X.float())  # Forward pass
+            loss = criterion(outputs, Y)  # Loss calculation for multi-class stuff
+            loss.backward()  # Backpropagation
+            optimizer.step()  # Optimizer step
             iter += 1
 
             if iter % 500 == 0:
                 correct = 0
                 total = 0
                 all_labels = []
-                all_probs = []
+                all_predictions = []
                 for X, Y in test_loader:
-                    outputs = model(X.float())
-                    probs = outputs.detach().numpy().flatten()
-                    predicted = (outputs > detect_threshold).float()
+                    outputs = model(X.float())  # Forward pass for test set
+                    _, predicted = torch.max(outputs.data, 1)  # Get the class with the highest probability
                     total += Y.size(0)
-                    correct += (predicted == Y.view(-1, 1)).sum().item()
+                    correct += (predicted == Y).sum().item()  # Compare predictions with actual labels
                     all_labels.extend(Y.numpy())
-                    all_probs.extend(probs)
+                    all_predictions.extend(predicted.numpy())
 
                 accuracy = 100 * correct / total
-                auc_roc = roc_auc_score(all_labels, all_probs)
-                precision, recall, _ = precision_recall_curve(all_labels, all_probs)
-                auc_pr = auc(recall, precision)
-                print(
-                    "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
-                        iter, loss.item(), accuracy, auc_roc, auc_pr
-                    )
-                )
+                print(f"Iteration: {iter}. Loss: {loss.item():.4f}. Accuracy: {accuracy:.2f}%")
 
     # Extract the model's state dictionary, convert to JSON serializable format
     state_dict = model.state_dict()

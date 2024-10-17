@@ -7,4 +7,5 @@ torch==2.3.0
 torchaudio==2.3.0
 torchtext==0.18.0
 torchvision==0.18.0
-
+onnxscript==0.1.0
+onnxruntime==1.19.2

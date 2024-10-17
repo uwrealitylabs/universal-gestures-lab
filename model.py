@@ -9,6 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import json
 from pprint import pprint
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 output_dim = 1  # binary classification for thumbs up or down
 input_dim = 17  # 17 features
@@ -103,16 +104,24 @@ def main():
             if iter % 500 == 0:
                 correct = 0
                 total = 0
+                all_labels = []
+                all_probs = []
                 for X, Y in test_loader:
                     outputs = model(X.float())
+                    probs = outputs.detach().numpy().flatten()
                     predicted = (outputs > detect_threshold).float()
                     total += Y.size(0)
                     correct += (predicted == Y.view(-1, 1)).sum().item()
+                    all_labels.extend(Y.numpy())
+                    all_probs.extend(probs)
 
                 accuracy = 100 * correct / total
+                auc_roc = roc_auc_score(all_labels, all_probs)
+                precision, recall, _ = precision_recall_curve(all_labels, all_probs)
+                auc_pr = auc(recall, precision)
                 print(
-                    "Iteration: {}. Loss: {}. Accuracy: {}".format(
-                        iter, loss.item(), accuracy
+                    "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
+                        iter, loss.item(), accuracy, auc_roc, auc_pr
                     )
                 )
 

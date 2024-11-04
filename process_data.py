@@ -22,13 +22,13 @@ def process_data(dataset_file):
     return data_list
     
 def split():
-    data_files = os.listdir("data")
+    data_files = os.listdir("data/normalized")
     
     print("Loading data files")
     full_dataset = []
     train = []
     for dataset_name in data_files:
-        full_dataset.extend(process_data("data/"+dataset_name))
+        full_dataset.extend(process_data("data/normalized/"+dataset_name))
 
     print("Splitting data into training and testing")
     train_size =  int(0.8 * len(full_dataset))

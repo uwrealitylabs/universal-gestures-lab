@@ -86,8 +86,8 @@ def main():
 
     model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
     criterion = nn.BCELoss()
-    learning_rate = 0.0004
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    learning_rate = 0.004
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     iter = 0
 
     for epoch in range(num_epochs):
@@ -103,11 +103,14 @@ def main():
             if iter % 500 == 0:
                 correct = 0
                 total = 0
-                for X, Y in test_loader:
-                    outputs = model(X.float())
-                    predicted = (outputs > detect_threshold).float()
-                    total += Y.size(0)
-                    correct += (predicted == Y.view(-1, 1)).sum().item()
+                
+                model.eval()
+                with torch.inference_mode():
+                    for X, Y in test_loader:
+                        outputs = model(X.float())
+                        predicted = (outputs > detect_threshold).float()
+                        total += Y.size(0)
+                        correct += (predicted == Y.view(-1, 1)).sum().item()
 
                 accuracy = 100 * correct / total
                 print(

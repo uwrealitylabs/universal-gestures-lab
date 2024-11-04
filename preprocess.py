@@ -14,6 +14,7 @@ class Bound:
 AngleBound = Bound(min=0, max=360)
 DistanceBound = Bound(min=0, max=1)
 
+
 def preprocess_file(input_file, output_dir):
     with open(input_file) as f:
         data = json.load(f)
@@ -21,11 +22,12 @@ def preprocess_file(input_file, output_dir):
     for position in data:
         hand_data = position["handData"]
         for i, value in enumerate(hand_data):
-            if i in [5, 9, 13, 16]:
+            #when using two handed data, replace next line with:
+            #if i in [5, 9, 13, 16, 22, 26, 30, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]:
+            if i in [5, 9, 13, 16]: 
                 hand_data[i] = DistanceBound.normalize(value)
             else:
                 hand_data[i] = AngleBound.normalize(value)
-
     output_file = os.path.join(output_dir, "normalized_" + os.path.basename(input_file))
     with open(output_file, "w") as f:
         json.dump(data, f)

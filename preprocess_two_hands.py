@@ -31,8 +31,7 @@ def preprocess_file(input_file, output_dir):
         json.dump(data, f)
 
 def preprocess_directory(data_dir):
-    #output_dir = os.path.join(data_dir, "normalized")
-    output_dir = "normalized_data/"
+    output_dir = os.path.join(data_dir, "normalized")
     os.makedirs(output_dir, exist_ok=True)
 
     for filename in os.listdir(data_dir):

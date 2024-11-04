@@ -3,7 +3,7 @@ import process_data
 import model
 
 def main():
-    # Normalizes data into normalized folder
+    # Normalizes data and saves to data/normalized folder
     preprocess.main()
     # Splits data and converts them to PyTorch tensors
     process_data.main()

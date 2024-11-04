@@ -87,8 +87,8 @@ def main():
 
     model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
     criterion = nn.BCELoss()
-    learning_rate = 0.0004
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    learning_rate = 0.004
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     iter = 0
 
     for epoch in range(num_epochs):
@@ -106,14 +106,17 @@ def main():
                 total = 0
                 all_labels = []
                 all_probs = []
-                for X, Y in test_loader:
-                    outputs = model(X.float())
-                    probs = outputs.detach().numpy().flatten()
-                    predicted = (outputs > detect_threshold).float()
-                    total += Y.size(0)
-                    correct += (predicted == Y.view(-1, 1)).sum().item()
-                    all_labels.extend(Y.numpy())
-                    all_probs.extend(probs)
+
+                model.eval()
+                with torch.inference_mode():
+                    for X, Y in test_loader:
+                        outputs = model(X.float())
+                        probs = outputs.detach().numpy().flatten()
+                        predicted = (outputs > detect_threshold).float()
+                        total += Y.size(0)
+                        correct += (predicted == Y.view(-1, 1)).sum().item()
+                        all_labels.extend(Y.numpy())
+                        all_probs.extend(probs)
 
                 accuracy = 100 * correct / total
                 auc_roc = roc_auc_score(all_labels, all_probs)

@@ -22,8 +22,6 @@ def preprocess_file(input_file, output_dir):
     for position in data:
         hand_data = position["handData"]
         for i, value in enumerate(hand_data):
-            #when using two handed data, replace if statement with:
-            #if i in [5, 9, 13, 16, 22, 26, 30, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]:
             if i in [5, 9, 13, 16]: 
                 hand_data[i] = DistanceBound.normalize(value)
             else:

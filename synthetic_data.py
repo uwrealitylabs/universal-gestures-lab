@@ -59,10 +59,10 @@ def augment_negative_data(negative_filepath, positive_filepath, output_filepath,
 
 def main():
     # file paths
-    negative_filepath = "data/thumbsupNegJustin.json"
-    positive_filepath = "data/thumbsupJustin.json"  # Raw positive gesture data 
-    output_filepath = "data/thumbsupNegDataJustinAugmented.json"
-    num_synthetic_samples = 10  # nnum of synthetic samples to generate per run
+    negative_filepath = "data/thumbsupLilyNeg.json"
+    positive_filepath = "data/thumbsupLily.json"  # Raw positive gesture data 
+    output_filepath = "data/thumbsupNegLilyAug2.json"
+    num_synthetic_samples = 40  # nnum of synthetic samples to generate per run
     
     # Run augmentation process
     augment_negative_data(negative_filepath, positive_filepath, output_filepath, num_synthetic_samples)

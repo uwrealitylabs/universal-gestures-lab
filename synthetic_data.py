@@ -3,6 +3,8 @@ import numpy as np
 import os
 
 # Parameters for valid range and distance margin
+# NOTE: we are also working on normalizing the data range in another branch, so
+#   when that is done, we will need to update these values to reflect the new range.
 CURL_RANGE = (180, 260)
 DISTANCE_MARGIN = 10
 

@@ -1,5 +1,5 @@
 jupyter==1.0.0
-matplotlib==3.2.2
+matplotlib==3.5.3
 numpy==2.0.0
 pandas==2.2.2
 pip == 22.3.1
@@ -7,5 +7,5 @@ torch==2.3.0
 torchaudio==2.3.0
 torchtext==0.18.0
 torchvision==0.18.0
-onnxscript==0.1.0
+onnxscript
 onnxruntime==1.19.2

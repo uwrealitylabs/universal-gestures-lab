@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, reca
 from sklearn.metrics import precision_recall_curve, auc
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
+import json
 
 # Model and hyperparameters
 input_dim = 17  # number of features for the gesture data
@@ -13,6 +14,9 @@ embedding_dim = 10  # embedding size for each input vector
 batch_size = 32
 num_epochs = 10
 threshold = 0.5
+
+SAVE_MODEL_PATH = "trained_model/"
+SAVE_MODEL_FILENAME = "siamesetriplet_model_weights.json"
 
 # Custom Siamese Network for Few-shot Learning
 class SiameseNetwork(nn.Module):
@@ -141,4 +145,13 @@ for epoch in range(num_epochs): # Regenerate balanced pairs at each epoch
         test_recall = recall_score(test_labels, test_preds)
         print(f"Epoch [{epoch+1}/{num_epochs}], Test Accuracy: {test_accuracy:.4f}, AUC-ROC: {test_auc_roc:.4f}, Precision: {test_precision:.4f}, Recall: {test_recall:.4f}")
 
-print("Training and evaluation complete.")
+# Extract the model's state dictionary, convert to JSON serializable format
+state_dict = model.state_dict()
+serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+
+# Store state dictionary
+with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
+    json.dump(serializable_state_dict, f)
+
+print("\n--- Model Training Complete ---")
+print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)

@@ -2,6 +2,7 @@ import psycopg2
 from dotenv import load_dotenv
 from datetime import datetime
 import os
+import utils
 import torch
 import torch.nn as nn
 import torchvision
@@ -125,7 +126,7 @@ def main():
 
                 # Example: Log metrics to the database
                 model_type = "binary classification"  # Adjust based on your specific model type
-                log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
+                utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
 
                 print(
                     "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(

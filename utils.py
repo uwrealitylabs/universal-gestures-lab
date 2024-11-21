@@ -1,7 +1,11 @@
-# Load environment variables
-load_dotenv()
+import psycopg2
+from dotenv import load_dotenv
+from datetime import datetime
+import os
 
 def log_training_metrics(auc_pr, auc_roc, final_loss, model_type):
+    # Load environment variables
+    load_dotenv()
     """Logs training metrics to the NeonDB database."""
     conn = None
     try:

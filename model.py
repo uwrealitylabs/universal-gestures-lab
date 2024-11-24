@@ -1,3 +1,8 @@
+import psycopg2
+from dotenv import load_dotenv
+from datetime import datetime
+import os
+import utils
 import torch
 import torch.nn as nn
 import torchvision
@@ -63,7 +68,6 @@ def load_data(dataset, batch_size=64):
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
 
-
 def main():
     train_path = "train_data/train_0.pt"
     test_path = "test_data/test_0.pt"
@@ -119,6 +123,11 @@ def main():
                 auc_roc = roc_auc_score(all_labels, all_probs)
                 precision, recall, _ = precision_recall_curve(all_labels, all_probs)
                 auc_pr = auc(recall, precision)
+
+                # Example: Log metrics to the database
+                model_type = "binary classification"  # Adjust based on your specific model type
+                utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
+
                 print(
                     "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
                         iter, loss.item(), accuracy, auc_roc, auc_pr
@@ -136,8 +145,6 @@ def main():
     # Store as onnx for compatibility with Unity Barracuda
     onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
     onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
-
-
 
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)

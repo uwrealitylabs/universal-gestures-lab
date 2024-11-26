@@ -1,6 +1,8 @@
 import psycopg2
 from dotenv import load_dotenv
 from datetime import datetime
+from b2sdk.v2 import InMemoryAccountInfo, B2Api
+from pathlib import Path
 import os
 
 def log_training_metrics(auc_pr, auc_roc, final_loss, model_type):
@@ -88,3 +90,60 @@ def log_training_metrics(auc_pr, auc_roc, final_loss, model_type):
         if conn:
             cursor.close()
             conn.close()
+
+def upload_to_b2(local_path, b2_file_name):
+    # Uploads files to Backblaze B2 bucket and manages storage limits
+    # Load environment variables
+    load_dotenv()
+
+    try:
+        # Initialize B2 API
+        info = InMemoryAccountInfo()
+        b2_api = B2Api(info)
+        b2_api.authorize_account("production", os.getenv("B2_KEY_ID"), os.getenv("B2_APPLICATION_KEY"))
+        bucket = b2_api.get_bucket_by_name(os.getenv("B2_BUCKET_NAME"))
+
+        # Check current bucket usage
+        MAX_STORAGE_GB = 10  # Backblaze free tier limit
+        WARNING_THRESHOLD_GB = 9.5  # Warn if usage exceeds this
+        total_usage_bytes = 0
+
+        for file_version, _ in bucket.ls(latest_only=True):
+            total_usage_bytes += file_version.size
+
+        total_usage_gb = total_usage_bytes / (1024 ** 3)  # Convert bytes to GB
+        print(f"Current bucket usage: {total_usage_gb:.2f} GB")
+
+        if total_usage_gb >= MAX_STORAGE_GB:
+            raise Exception("Storage limit exceeded! Free up space to continue.")
+        elif total_usage_gb >= WARNING_THRESHOLD_GB:
+            print("WARNING: Bucket storage is nearing its limit. Freeing up space...")
+            free_up_space(bucket, total_usage_gb - WARNING_THRESHOLD_GB)
+
+        # Upload the file
+        local_file = Path(local_path).resolve()
+        bucket.upload_local_file(local_file=local_file, file_name=b2_file_name)
+        print(f"File uploaded to Backblaze B2: {b2_file_name}")
+
+    except Exception as e:
+        print("Error uploading file to Backblaze B2:", e)
+
+
+def free_up_space(bucket, space_needed_gb):
+    """Deletes the oldest files to free up space in the bucket."""
+    space_needed_bytes = space_needed_gb * (1024 ** 3)  # Convert GB to bytes
+    freed_space_bytes = 0
+
+    # List all files, sorted by upload time (oldest first)
+    files = list(bucket.ls(latest_only=True))
+    files_sorted = sorted(files, key=lambda f: f[0].upload_timestamp)
+
+    for file_version, _ in files_sorted:
+        if freed_space_bytes >= space_needed_bytes:
+            break
+
+        print(f"Deleting file: {file_version.file_name} ({file_version.size / (1024 ** 2):.2f} MB)")
+        bucket.delete_file_version(file_version.id_, file_version.file_name)
+        freed_space_bytes += file_version.size
+
+    print(f"Freed up space: {freed_space_bytes / (1024 ** 3):.2f} GB")

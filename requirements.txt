@@ -9,3 +9,4 @@ torchtext==0.18.0
 torchvision==0.18.0
 onnxscript
 onnxruntime==1.19.2
+scikit-learn==1.5.2

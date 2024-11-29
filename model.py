@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import json
 from pprint import pprint
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
-from metrics import compute_confusion_matrix
+from confusion_matrix import compute_confusion_matrix
 
 output_dim = 1  # binary classification for thumbs up or down
 input_dim = 17  # 17 features

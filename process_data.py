@@ -21,14 +21,14 @@ def process_data(dataset_file):
     # Convert the list of lists to a torch tensor
     return data_list
     
-def split():
-    data_files = os.listdir("data")
+def split(dire = "data"):
+    data_files = os.listdir(dire)
     
     print("Loading data files")
     full_dataset = []
     train = []
     for dataset_name in data_files:
-        full_dataset.extend(process_data("data/"+dataset_name))
+        full_dataset.extend(process_data(dire + "/" +dataset_name))
 
     print("Splitting data into training and testing")
     train_size =  int(0.8 * len(full_dataset))

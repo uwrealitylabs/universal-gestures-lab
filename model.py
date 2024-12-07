@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import os
 import json
+from b2sdk.v2 import InMemoryAccountInfo, B2Api
+from pathlib import Path
 from pprint import pprint
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
@@ -132,13 +134,20 @@ def main():
                     )
                 )
 
+    # Save model weights locally
+    save_path = "trained_model/"
+    os.makedirs(save_path, exist_ok=True)
     # Extract the model's state dictionary, convert to JSON serializable format
     state_dict = model.state_dict()
     serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+    model_json_path = os.path.join(save_path, "model_weights.json")
 
     # Store state dictionary
     with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
         json.dump(serializable_state_dict, f)
+    
+    # Upload to Backblaze B2
+    utils.upload_to_b2(model_json_path, "uwrl-modelweights/model_weights.json")
 
     # Store as onnx for compatibility with Unity Barracuda
     onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
@@ -146,7 +155,6 @@ def main():
 
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
-
 
 if __name__ == "__main__":
     main()

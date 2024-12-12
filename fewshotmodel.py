@@ -7,6 +7,7 @@ from sklearn.metrics import precision_recall_curve, auc
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import json
+from confusion_matrix import compute_confusion_matrix
 
 # Model and hyperparameters
 input_dim = 17  # number of features for the gesture data
@@ -131,8 +132,14 @@ for epoch in range(num_epochs): # Regenerate balanced pairs at each epoch
         test_auc_roc = roc_auc_score(test_labels, test_scores)
         test_precision = precision_score(test_labels, test_preds)
         test_recall = recall_score(test_labels, test_preds)
-        print(f"Epoch [{epoch+1}/{num_epochs}], Test Accuracy: {test_accuracy:.4f}, AUC-ROC: {test_auc_roc:.4f}, Precision: {test_precision:.4f}, Recall: {test_recall:.4f}")
-
+        cm = compute_confusion_matrix(test_labels, test_preds)
+        print(
+            "Epoch [{} / {}], Test Accuracy: {:.4f}, AUC-ROC: {:.4f}, Precision: {:.4f}, "
+            "Recall: {:.4f}, Confusion_Matrix: {}".format(
+                epoch + 1, num_epochs, test_accuracy, test_auc_roc, test_precision, test_recall,
+                ", ".join(f"{key}: {value}" for key, value in cm.items())
+            )
+        )
 # Extract the model's state dictionary, convert to JSON serializable format
 state_dict = model.state_dict()
 serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}

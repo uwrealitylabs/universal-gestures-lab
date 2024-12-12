@@ -9,4 +9,5 @@ torchtext
 torchvision
 onnxscript
 onnxruntime==1.19.2
+scikit-learn==1.5.2
 flask

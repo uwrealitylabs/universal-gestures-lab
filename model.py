@@ -1,12 +1,15 @@
+import psycopg2
+from dotenv import load_dotenv
+from datetime import datetime
+import os
+import utils
 import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 import json
 from pprint import pprint
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
@@ -63,7 +66,6 @@ class CustomDataset(torch.utils.data.Dataset):
 def load_data(dataset, batch_size=64):
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
-
 
 def main():
     train_path = "train_data/train_0.pt"
@@ -123,6 +125,10 @@ def main():
                 binary_preds = [1 if prob > detect_threshold else 0 for prob in all_probs] 
                 cm = compute_confusion_matrix(all_labels, binary_preds)
 
+                # Example: Log metrics to the database
+                model_type = "binary classification"  # Adjust based on your specific model type
+                utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
+
                 print(
                     "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}. Confusion_Matrix: {}".format(
                     iter, loss.item(), accuracy, auc_roc, auc_pr, 
@@ -141,8 +147,6 @@ def main():
     # Store as onnx for compatibility with Unity Barracuda
     onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
     onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
-
-
 
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)

@@ -1,12 +1,13 @@
 jupyter==1.0.0
-matplotlib==3.5.3
+# matplotlib==3.2.2
 numpy==2.0.0
 pandas==2.2.2
 pip == 22.3.1
-torch==2.3.0
-torchaudio==2.3.0
-torchtext==0.18.0
-torchvision==0.18.0
+torch==2.4.1
+torchaudio
+torchtext
+torchvision
 onnxscript
 onnxruntime==1.19.2
 scikit-learn==1.5.2
+flask

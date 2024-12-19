@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, send_file
-import model
-import model_two_hands
+import src.model as model
+import src.model_two_hands as model_two_hands
 import os
-import process_data
+import src.process_data as process_data
 import shutil
 app = Flask(__name__)
 
@@ -21,9 +21,8 @@ def train_mode_one_hand():
   process_data.split("serverdata")
   model.main()
   return send_file("trained_model/model_weights.onnx", as_attachment=True)
-  
 
-  return jsonify({"message": "Data received", "data": data}), 200
+  # return jsonify({"message": "Data received", "data": data}), 200
 
 
 @app.route('/train_model_two_hands/', methods=['POST'])
@@ -37,7 +36,7 @@ def train_mode_two_hands():
   model_two_hands.main()
 
   return send_file("trained_model/model_two_hands_weights.onnx", as_attachment=True)
-  return jsonify({"message": "Data received", "data": data}), 200
+  # return jsonify({"message": "Data received", "data": data}), 200
 
 
 def clearServerData():

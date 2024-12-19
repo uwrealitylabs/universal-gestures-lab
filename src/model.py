@@ -1,21 +1,25 @@
+import psycopg2
+from dotenv import load_dotenv
+from datetime import datetime
+import os
+import utils
 import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
-# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
-# import matplotlib.pyplot as plt
 import json
 from pprint import pprint
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 output_dim = 1  # binary classification for thumbs up or down
-input_dim = 44  # 44 features
+input_dim = 17  # 17 features
 detect_threshold = 0.7  # threshold for classification as a thumbs up
 
-SAVE_MODEL_PATH = "trained_model/"
-SAVE_MODEL_FILENAME = "model_two_hands_weights.json"
+SAVE_MODEL_PATH = "../trained_model/"
+SAVE_MODEL_FILENAME = "model_weights.json"
 
 
 # Model
@@ -62,7 +66,6 @@ def load_data(dataset, batch_size=64):
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
 
-
 def main():
     train_path = "train_data/train_0.pt"
     test_path = "test_data/test_0.pt"
@@ -103,16 +106,29 @@ def main():
             if iter % 500 == 0:
                 correct = 0
                 total = 0
+                all_labels = []
+                all_probs = []
                 for X, Y in test_loader:
                     outputs = model(X.float())
+                    probs = outputs.detach().numpy().flatten()
                     predicted = (outputs > detect_threshold).float()
                     total += Y.size(0)
                     correct += (predicted == Y.view(-1, 1)).sum().item()
+                    all_labels.extend(Y.numpy())
+                    all_probs.extend(probs)
 
                 accuracy = 100 * correct / total
+                auc_roc = roc_auc_score(all_labels, all_probs)
+                precision, recall, _ = precision_recall_curve(all_labels, all_probs)
+                auc_pr = auc(recall, precision)
+
+                # Example: Log metrics to the database
+                model_type = "binary classification"  # Adjust based on your specific model type
+                utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
+
                 print(
-                    "Iteration: {}. Loss: {}. Accuracy: {}".format(
-                        iter, loss.item(), accuracy
+                    "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
+                        iter, loss.item(), accuracy, auc_roc, auc_pr
                     )
                 )
 
@@ -127,8 +143,6 @@ def main():
     # Store as onnx for compatibility with Unity Barracuda
     onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
     onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
-
-
 
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)

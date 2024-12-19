@@ -7,9 +7,9 @@ import onnxruntime as ort
 import numpy as np
 
 # Load the ONNX model
-model_path = 'trained_model/model_weights.json' 
+model_path = '../trained_model/model_weights.json' 
 # use the following modle_path for two hands model
-# model_path = 'trained_model/model_two_hands_weights.onnx' 
+# model_path = '../trained_model/model_two_hands_weights.onnx' 
 input_size = 44 # 44 features. switch to 17 for one hand.
 onnx_model = onnx.load(model_path)
 onnx.checker.check_model(onnx_model)

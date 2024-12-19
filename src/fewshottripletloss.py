@@ -15,8 +15,8 @@ batch_size = 32
 num_epochs = 10
 threshold = 0.5
 
-SAVE_MODEL_PATH = "trained_model/"
-SAVE_MODEL_FILENAME = "siamese_model_weights.json"
+SAVE_MODEL_PATH = "../trained_model/"
+SAVE_MODEL_FILENAME = "siamesetriplet_model_weights.json"
 
 # Custom Siamese Network for Few-shot Learning
 class SiameseNetwork(nn.Module):
@@ -38,9 +38,21 @@ class SiameseNetwork(nn.Module):
         return output1, output2
 
 # Contrastive Loss for training
-class ContrastiveLoss(nn.Module):
+
+# Triplet Loss for training
+class TripletLoss(nn.Module):
+    def __init__(self, margin=1.0):
+        super(TripletLoss, self).__init__()
+        self.margin = margin
+
+    def forward(self, anchor, positive, negative):
+        positive_distance = F.pairwise_distance(anchor, positive)
+        negative_distance = F.pairwise_distance(anchor, negative)
+        loss = torch.mean(F.relu(positive_distance - negative_distance + self.margin))
+        return loss
+
     def __init__(self, margin=0.5):
-        super(ContrastiveLoss, self).__init__()
+        super(TripletLoss, self).__init__()
         self.margin = margin
 
     def forward(self, output1, output2, label):
@@ -102,7 +114,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # Initialize the model, loss function, and optimizer
 model = SiameseNetwork(input_dim, embedding_dim)
-criterion = ContrastiveLoss()
+criterion = TripletLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Training and evaluation

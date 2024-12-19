@@ -21,7 +21,7 @@ def process_data(dataset_file):
     # Convert the list of lists to a torch tensor
     return data_list
     
-def split(dire = "data"):
+def split(dire = "src/data"):
     data_files = os.listdir(dire)
     
     print("Loading data files")
@@ -37,11 +37,11 @@ def split(dire = "data"):
 
     print("Processing training data")
     train_tensor = torch.tensor(train)
-    torch.save(train_tensor, "train_data/train_0.pt")
+    torch.save(train_tensor, "src/train_data/train_0.pt")
     
     print("Processing testing data")
     test_tensor = torch.tensor(test)
-    torch.save(test_tensor, "test_data/test_0.pt")
+    torch.save(test_tensor, "src/test_data/test_0.pt")
     
 def main():
     split()

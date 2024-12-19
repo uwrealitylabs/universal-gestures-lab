@@ -14,7 +14,7 @@ output_dim = 1  # binary classification for thumbs up or down
 input_dim = 44  # 44 features
 detect_threshold = 0.7  # threshold for classification as a thumbs up
 
-SAVE_MODEL_PATH = "../trained_model/"
+SAVE_MODEL_PATH = "trained_model/"
 SAVE_MODEL_FILENAME = "model_two_hands_weights.json"
 
 
@@ -64,8 +64,8 @@ def load_data(dataset, batch_size=64):
 
 
 def main():
-    train_path = "train_data/train_0.pt"
-    test_path = "test_data/test_0.pt"
+    train_path = "src/train_data/train_0.pt"
+    test_path = "src/test_data/test_0.pt"
     train_data = torch.load(train_path)
     test_data = torch.load(test_path)
     batch_size = 64
@@ -119,6 +119,10 @@ def main():
     # Extract the model's state dictionary, convert to JSON serializable format
     state_dict = model.state_dict()
     serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+
+    # Create directory if it does not exist
+    if not os.path.exists(SAVE_MODEL_PATH):
+        os.makedirs(SAVE_MODEL_PATH)
 
     # Store state dictionary
     with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:

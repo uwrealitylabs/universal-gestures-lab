@@ -1,6 +1,6 @@
-import process_data
-import model
-import synthetic_data
+from . import process_data
+from . import model
+from . import synthetic_data
 
 def main():
     # Splits data and converts them to PyTorch tensors

@@ -162,3 +162,8 @@ cython_debug/
 #.idea/
 
 .DS_Store
+src/data/
+src/serverdata/
+src/test_data/
+src/train_data/
+trained_model/

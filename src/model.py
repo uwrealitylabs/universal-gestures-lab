@@ -66,6 +66,7 @@ def load_data(dataset, batch_size=64):
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
 
+
 def main():
     train_path = "src/train_data/train_0.pt"
     test_path = "src/test_data/test_0.pt"
@@ -123,8 +124,12 @@ def main():
                 auc_pr = auc(recall, precision)
 
                 # Example: Log metrics to the database
-                model_type = "binary classification"  # Adjust based on your specific model type
-                utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
+                model_type = (
+                    "binary classification"  # Adjust based on your specific model type
+                )
+
+                # Logging disabled for package release
+                # utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
 
                 print(
                     "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(

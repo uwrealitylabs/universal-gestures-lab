@@ -21,7 +21,7 @@ def process_data(dataset_file):
     # Convert the list of lists to a torch tensor
     return data_list
     
-def split(dire = "src/data"):
+def split(dire = "src/data_with_transform"):
     data_files = os.listdir(dire)
     
     print("Loading data files")

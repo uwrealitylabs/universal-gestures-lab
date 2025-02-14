@@ -18,9 +18,6 @@ output_dim = 1  # binary classification for thumbs up or down
 input_dim = 21  # 17 features
 detect_threshold = 0.7  # threshold for classification as a thumbs up
 
-SAVE_MODEL_PATH = "trained_model/"
-SAVE_MODEL_FILENAME = "model_weights.json"
-
 
 # Model
 class FeedforwardNeuralNetModel(nn.Module):
@@ -68,97 +65,117 @@ def load_data(dataset, batch_size=64):
 
 
 def main():
-    train_path = "src/train_data/train_0.pt"
-    test_path = "src/test_data/test_0.pt"
-    train_data = torch.load(train_path)
-    test_data = torch.load(test_path)
-    assert len(train_data) > 0
-    batch_size = 64
-    n_iters = len(train_data) * 5  # 5 epochs
-    num_epochs = int(n_iters / (len(train_data) / batch_size))
+    
+    for gesture in [
+        "erm_actually",
+        "finger_gun",
+        "fist_up",
+        "paper",
+        "peace_sign",
+        "rock",
+        "scissors",
+        "thumbs_up",
+        "thumbs_down",
+        "wave",
+    ]:
+        print(f"\n\n\nTraining model for {gesture}")
+        print("--------------------------------")
 
-    X_train = torch.tensor(train_data[:, :-1])
-    y_train = torch.tensor(train_data[:, -1])
-    train_loader = torch.utils.data.DataLoader(
-        list(zip(X_train, y_train)), shuffle=True, batch_size=16
-    )
+        train_path = f"src/train_data/train_{gesture}.pt"
+        test_path = f"src/test_data/test_{gesture}.pt"
+        train_data = torch.load(train_path)
+        test_data = torch.load(test_path)
+        assert len(train_data) > 0
+        batch_size = 64
+        n_iters = len(train_data) * 5  # 5 epochs
+        num_epochs = int(n_iters / (len(train_data) / batch_size))
 
-    X_test = torch.tensor(test_data[:, :-1])
-    y_test = torch.tensor(test_data[:, -1])
-    test_loader = torch.utils.data.DataLoader(
-        list(zip(X_test, y_test)), shuffle=True, batch_size=16
-    )
+        X_train = torch.tensor(train_data[:, :-1])
+        y_train = torch.tensor(train_data[:, -1])
+        train_loader = torch.utils.data.DataLoader(
+            list(zip(X_train, y_train)), shuffle=True, batch_size=16
+        )
 
-    model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
-    criterion = nn.BCELoss()
-    learning_rate = 0.0004
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-    iter = 0
+        X_test = torch.tensor(test_data[:, :-1])
+        y_test = torch.tensor(test_data[:, -1])
+        test_loader = torch.utils.data.DataLoader(
+            list(zip(X_test, y_test)), shuffle=True, batch_size=16
+        )
 
-    for epoch in range(num_epochs):
-        for i, (X, Y) in enumerate(train_loader):
-            Y = Y.view(-1, 1)
-            optimizer.zero_grad()
-            outputs = model(X.float())
-            loss = criterion(outputs, Y.float())
-            loss.backward()
-            optimizer.step()
-            iter += 1
+        model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
+        criterion = nn.BCELoss()
+        learning_rate = 0.0004
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+        iter = 0
 
-            if iter % 500 == 0:
-                correct = 0
-                total = 0
-                all_labels = []
-                all_probs = []
-                
-                model.eval()
-                for X, Y in test_loader:
-                    outputs = model(X.float())
-                    probs = outputs.detach().numpy().flatten()
-                    predicted = (outputs > detect_threshold).float()
-                    total += Y.size(0)
-                    correct += (predicted == Y.view(-1, 1)).sum().item()
-                    all_labels.extend(Y.numpy())
-                    all_probs.extend(probs)
-                model.train()
+        for epoch in range(num_epochs):
+            for i, (X, Y) in enumerate(train_loader):
+                Y = Y.view(-1, 1)
+                optimizer.zero_grad()
+                outputs = model(X.float())
+                loss = criterion(outputs, Y.float())
+                loss.backward()
+                optimizer.step()
+                iter += 1
 
-                accuracy = 100 * correct / total
-                auc_roc = roc_auc_score(all_labels, all_probs)
-                precision, recall, _ = precision_recall_curve(all_labels, all_probs)
-                auc_pr = auc(recall, precision)
+                if iter % 500 == 0:
+                    correct = 0
+                    total = 0
+                    all_labels = []
+                    all_probs = []
+                    
+                    model.eval()
+                    for X, Y in test_loader:
+                        outputs = model(X.float())
+                        probs = outputs.detach().numpy().flatten()
+                        predicted = (outputs > detect_threshold).float()
+                        total += Y.size(0)
+                        correct += (predicted == Y.view(-1, 1)).sum().item()
+                        all_labels.extend(Y.numpy())
+                        all_probs.extend(probs)
+                    model.train()
 
-                # Example: Log metrics to the database
-                model_type = (
-                    "binary classification"  # Adjust based on your specific model type
-                )
+                    accuracy = 100 * correct / total
+                    auc_roc = roc_auc_score(all_labels, all_probs)
+                    precision, recall, _ = precision_recall_curve(all_labels, all_probs)
+                    auc_pr = auc(recall, precision)
 
-                # Logging disabled for package release
-                # utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
-
-                print(
-                    "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
-                        iter, loss.item(), accuracy, auc_roc, auc_pr
+                    # Example: Log metrics to the database
+                    model_type = (
+                        "binary classification"  # Adjust based on your specific model type
                     )
-                )
 
-    # Extract the model's state dictionary, convert to JSON serializable format
-    state_dict = model.state_dict()
-    serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+                    # Logging disabled for package release
+                    # utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
 
-    # Create directory if it does not exist
-    if not os.path.exists(SAVE_MODEL_PATH):
-        os.makedirs(SAVE_MODEL_PATH)
+                    print(
+                        "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
+                            iter, loss.item(), accuracy, auc_roc, auc_pr
+                        )
+                    )
 
-    # Store state dictionary
-    with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
-        json.dump(serializable_state_dict, f)
+        # Extract the model's state dictionary, convert to JSON serializable format
+        state_dict = model.state_dict()
+        serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
 
-    # Store as onnx for compatibility with Unity Barracuda
-    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
-    onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
+        SAVE_MODEL_PATH = f"trained_models/"
+        SAVE_MODEL_FILENAME = f"model_weights_{gesture}.json"
 
-    print("\n--- Model Training Complete ---")
-    print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
+        # Create directory if it does not exist
+        if not os.path.exists(SAVE_MODEL_PATH):
+            os.makedirs(SAVE_MODEL_PATH)
+
+        # Store state dictionary
+        with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
+            json.dump(serializable_state_dict, f)
+
+        # Store as onnx for compatibility with Unity Barracuda
+        onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
+        onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
+
+        print(f"\n--- Model Training Complete for {gesture} ---")
+        print(f"Model weights saved to {SAVE_MODEL_PATH + SAVE_MODEL_FILENAME}")
+        print("--------------------------------")
 
 
 if __name__ == "__main__":

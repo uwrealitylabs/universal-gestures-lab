@@ -169,5 +169,3 @@ src/train_data/
 trained_model/
 src/data_with_transform/
 trained_models/
-*.pt
-*.onnx

@@ -8,6 +8,8 @@ import json
 # WILL NEED TO SOMEHOW MODIFY THE DATA TO SUPPORT > 2 CLASSES
 
 def process_data(dataset_file, desired_confidence=None):
+    # desired confidence can be set to 0 or 1 to force the data
+    # to be used as negative or positive data respectively
     with open(dataset_file) as f:
         json_data = json.load(f)
 

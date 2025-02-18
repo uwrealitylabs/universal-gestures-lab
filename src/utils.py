@@ -3,6 +3,19 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 
+GESTURES = [
+    "erm_actually",
+    "finger_gun",
+    "fist_up",
+    "paper",
+    "peace_sign",
+    "rock",
+    "scissors",
+    "thumbs_up",
+    "thumbs_down",
+    "wave",
+]
+
 def log_training_metrics(auc_pr, auc_roc, final_loss, model_type):
     # Load environment variables
     load_dotenv()

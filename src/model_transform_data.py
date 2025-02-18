@@ -2,7 +2,7 @@ import psycopg2
 from dotenv import load_dotenv
 from datetime import datetime
 import os
-from . import utils
+import utils
 import torch
 import torch.nn as nn
 import torchvision
@@ -65,19 +65,7 @@ def load_data(dataset, batch_size=64):
 
 
 def main():
-    
-    for gesture in [
-        "erm_actually",
-        "finger_gun",
-        "fist_up",
-        "paper",
-        "peace_sign",
-        "rock",
-        "scissors",
-        "thumbs_up",
-        "thumbs_down",
-        "wave",
-    ]:
+    for gesture in utils.GESTURES:
         print(f"\n\n\nTraining model for {gesture}")
         print("--------------------------------")
 

@@ -4,6 +4,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 import os
 import json
+import utils
 
 # WILL NEED TO SOMEHOW MODIFY THE DATA TO SUPPORT > 2 CLASSES
 
@@ -56,18 +57,7 @@ def split(positive_data, data_dir="src/data_with_transform"):
     print("--------------------------------")
     
 def main():
-    for gesture in [
-        "erm_actually",
-        "finger_gun",
-        "fist_up",
-        "paper",
-        "peace_sign",
-        "rock",
-        "scissors",
-        "thumbs_up",
-        "thumbs_down",
-        "wave",
-    ]:
+    for gesture in utils.GESTURES:
         split(positive_data=gesture, data_dir="src/data_with_transform")
     # process_data(data_path, output_path)
 

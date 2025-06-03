@@ -17,7 +17,7 @@ CurlBound = Bound(min=180, max=260)
 FlexionBound = Bound(min=180, max=260)
 AbductionBound = Bound(min=8, max=90)
 OppositionBound = Bound(min=0, max=0.2)
-
+TransformBound = Bound(min=0, max=180)
 
 def is_json(parser, file):
     if not file.endswith(".json"):
@@ -61,6 +61,9 @@ for position in data:
                 hand_data[i] = FlexionBound.normalize(value)
             case 3 | 9 | 13 | 16:
                 hand_data[i] = OppositionBound.normalize(value)
+            case 17 | 18 | 19 | 20: # wristUp, palmUp, palmTowardsFace, fingersUp
+                hand_data[i] = TransformBound.normalize(value)
+            
 
 with open(args.file_path + "normalized_" + input, "w") as f:
     json.dump(data, f)

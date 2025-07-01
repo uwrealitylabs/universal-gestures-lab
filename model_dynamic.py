@@ -11,7 +11,9 @@ import json
 from pprint import pprint
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') #for device agnostic code
+device = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu"
+)  # for device agnostic code
 
 output_dim = 1  # binary classification for gesture detected or not
 input_dim = 17  # 17 features
@@ -19,13 +21,15 @@ detect_threshold = 0.7  # threshold for gesture classification
 
 SAVE_MODEL_PATH = "trained_model/"
 SAVE_MODEL_FILENAME = "model_dynamic_weights.json"
-TRAIN_PATH = "train_data/train_sequences_0.pt" #sequenced dynamic train data
-TEST_PATH = "test_data/test_sequences_0.pt" #sequenced dynamic test data
+TRAIN_PATH = "train_data/train_sequences_0.pt"  # sequenced dynamic train data
+TEST_PATH = "test_data/test_sequences_0.pt"  # sequenced dynamic test data
+
 
 def split_feature_label(data):
     X = data[:, :, :-1]
     Y = data[:, -1, -1]
     return X, Y
+
 
 class LSTM_Model(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers=1):
@@ -34,13 +38,22 @@ class LSTM_Model(nn.Module):
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_dim, output_dim)
-    
+
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(dim=0), self.hidden_dim).to(device) #initialized hidden state
-        c0 = torch.zeros(self.num_layers, x.size(dim=0), self.hidden_dim).to(device) #initialized cell state
-        out, states = self.lstm(x, (h0, c0)) # states represents hidden and cell states (not needed)
-        out = self.fc(out[:, -1, :]) # get the last time step's output for each sequence
+        h0 = torch.zeros(self.num_layers, x.size(dim=0), self.hidden_dim).to(
+            device
+        )  # initialized hidden state
+        c0 = torch.zeros(self.num_layers, x.size(dim=0), self.hidden_dim).to(
+            device
+        )  # initialized cell state
+        out, states = self.lstm(
+            x, (h0, c0)
+        )  # states represents hidden and cell states (not needed)
+        out = self.fc(
+            out[:, -1, :]
+        )  # get the last time step's output for each sequence
         return out
+
 
 def main():
     train_data = torch.load(TRAIN_PATH, weights_only=False)
@@ -52,16 +65,16 @@ def main():
 
     X_train, y_train = split_feature_label(train_data)
     X_test, y_test = split_feature_label(test_data)
-    
+
     train_loader = torch.utils.data.DataLoader(
         list(zip(X_train, y_train)), shuffle=True, batch_size=64
     )
-    
+
     test_loader = torch.utils.data.DataLoader(
         list(zip(X_test, y_test)), shuffle=True, batch_size=64
     )
-    
-    lstm_model = LSTM_Model(input_dim, 32, output_dim).to(device) #32 hidden layers
+
+    lstm_model = LSTM_Model(input_dim, 32, output_dim).to(device)  # 32 hidden layers
     criterion = nn.BCEWithLogitsLoss()
     learning_rate = 0.0004
     optimizer = torch.optim.SGD(lstm_model.parameters(), lr=learning_rate)
@@ -121,6 +134,7 @@ def main():
 
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
+
 
 if __name__ == "__main__":
     main()

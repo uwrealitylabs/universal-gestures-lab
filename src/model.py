@@ -14,33 +14,53 @@ import json
 from pprint import pprint
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
-output_dim = 1  # binary classification for thumbs up or down
+output_dim = 5  # multi-class classification for 5 classes
 input_dim = 17  # 17 features
-detect_threshold = 0.7  # threshold for classification as a thumbs up
+detect_threshold = 0.7  # threshold for classification as a specific class
 
 SAVE_MODEL_PATH = "trained_model/"
-SAVE_MODEL_FILENAME = "model_weights.json"
+SAVE_MODEL_FILENAME = "model_multi_class_weights.json"
 
 
 # Model
 class FeedforwardNeuralNetModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(FeedforwardNeuralNetModel, self).__init__()
-        # Linear function
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        # Non-linearity
-        self.sigmoid = nn.Sigmoid()
-        # Linear function (readout)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+
+        # Define the feedforward neural network architecture
+        #       with 4 hidden layers.
+
+        # input -> layer 1
+        self.fc1 = nn.Linear(input_dim, 64)
+        self.relu1 = nn.ReLU()
+
+        # layer 1 -> 2
+        self.fc2 = nn.Linear(64, 128)
+        self.relu2 = nn.ReLU()
+
+        # layer 2 -> 3
+        self.fc3 = nn.Linear(128, 64)
+        self.relu3 = nn.ReLU()
+
+        # layer 3 -> 4
+        self.fc4 = nn.Linear(64, 32)
+        self.relu4 = nn.ReLU()
+
+        # layer 4 -> output
+        self.fc5 = nn.Linear(32, output_dim)
 
     def forward(self, x):
-        # Linear function
-        out = self.fc1(x)
-        # Non-linearity
-        out = self.sigmoid(out)
-        # Linear function (readout)
-        out = self.fc2(out)
-        return torch.sigmoid(out)
+        # Assuming x is of shape (batch_size, input_dim)
+        x = self.fc1(x)
+        x = self.relu1(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.fc3(x)
+        x = self.relu3(x)
+        x = self.fc4(x)
+        x = self.relu4(x)
+        x = self.fc5(x)
+        return x  # raw logits for CrossEntropyLoss
 
 
 # Data set
@@ -55,7 +75,7 @@ class CustomDataset(torch.utils.data.Dataset):
         self.X, self.Y = split_feature_label(data)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.X)
 
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
@@ -88,7 +108,7 @@ def main():
         list(zip(X_test, y_test)), shuffle=True, batch_size=16
     )
 
-    model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
+    model = FeedforwardNeuralNetModel(input_dim, None, 5)
     criterion = nn.BCELoss()
     learning_rate = 0.0004
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)

@@ -12,40 +12,55 @@ import pandas as pd
 import os
 import json
 from pprint import pprint
-from sklearn.metrics import (
-    roc_auc_score,
-    precision_recall_curve,
-    auc,
-    classification_report,
-)
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
-output_dim = 1  # binary classification for thumbs up or down
+output_dim = 5  # multi-class classification for 5 classes
 input_dim = 17  # 17 features
-detect_threshold = 0.7  # threshold for classification as a thumbs up
+detect_threshold = 0.7  # threshold for classification as a specific class
 
 SAVE_MODEL_PATH = "trained_model/"
-SAVE_MODEL_FILENAME = "model_weights.json"
+SAVE_MODEL_FILENAME = "model_multi_class_weights.json"
 
 
 # Model
 class FeedforwardNeuralNetModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(FeedforwardNeuralNetModel, self).__init__()
-        # Linear function
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        # Non-linearity
-        self.sigmoid = nn.Sigmoid()
-        # Linear function (readout)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+
+        # Define the feedforward neural network architecture
+        #       with 4 hidden layers.
+
+        # input -> layer 1
+        self.fc1 = nn.Linear(input_dim, 64)
+        self.relu1 = nn.ReLU()
+
+        # layer 1 -> 2
+        self.fc2 = nn.Linear(64, 128)
+        self.relu2 = nn.ReLU()
+
+        # layer 2 -> 3
+        self.fc3 = nn.Linear(128, 64)
+        self.relu3 = nn.ReLU()
+
+        # layer 3 -> 4
+        self.fc4 = nn.Linear(64, 32)
+        self.relu4 = nn.ReLU()
+
+        # layer 4 -> output
+        self.fc5 = nn.Linear(32, output_dim)
 
     def forward(self, x):
-        # Linear function
-        out = self.fc1(x)
-        # Non-linearity
-        out = self.sigmoid(out)
-        # Linear function (readout)
-        out = self.fc2(out)
-        return torch.sigmoid(out)
+        # Assuming x is of shape (batch_size, input_dim)
+        x = self.fc1(x)
+        x = self.relu1(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.fc3(x)
+        x = self.relu3(x)
+        x = self.fc4(x)
+        x = self.relu4(x)
+        x = self.fc5(x)
+        return x  # raw logits for CrossEntropyLoss
 
 
 # Data set
@@ -60,7 +75,7 @@ class CustomDataset(torch.utils.data.Dataset):
         self.X, self.Y = split_feature_label(data)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.X)
 
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
@@ -73,186 +88,74 @@ def load_data(dataset, batch_size=64):
 
 
 def main():
-    # Load all data files first (without processing)
-    testing_files_data = {}
-    training_files_data = {}
+    train_path = "src/train_data/train_0.pt"
+    test_path = "src/test_data/test_0.pt"
+    train_data = torch.load(train_path)
+    test_data = torch.load(test_path)
+    batch_size = 64
+    n_iters = len(train_data) * 5  # 5 epochs
+    num_epochs = int(n_iters / (len(train_data) / batch_size))
 
-    print("=== Loading Testing Data Files ===")
-    for file in os.listdir(TESTING_DATA_PATH):
-        if file.endswith(".json"):
-            file_path = os.path.join(TESTING_DATA_PATH, file)
-            print(f"Loading file: {file}")
-            with open(file_path, "r") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    testing_files_data[file] = data
-                    print(f"  {file}: {len(data)} samples")
-
-    print("\n=== Loading Training Data Files ===")
-    for file in os.listdir(TRAINING_DATA_PATH):
-        if file.endswith(".json"):
-            file_path = os.path.join(TRAINING_DATA_PATH, file)
-            print(f"Loading file: {file}")
-            with open(file_path, "r") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    training_files_data[file] = data
-                    print(f"  {file}: {len(data)} samples")
-
-    # Find minimum length across all files
-    all_lengths = []
-    for file, data in testing_files_data.items():
-        all_lengths.append(len(data))
-    for file, data in training_files_data.items():
-        all_lengths.append(len(data))
-
-    if not all_lengths:
-        print("ERROR: No valid data files found.")
-        return
-
-    min_length = min(all_lengths)
-    print(f"\n=== Data Balancing ===")
-    print(f"Minimum file length: {min_length} samples")
-    print(f"Will extract {min_length} samples from each file for balanced dataset")
-
-    # Now process the data with balanced sampling
-    testing_data = []
-    training_data = []
-
-    print("\n=== Processing Testing Data ===")
-    for file, data in testing_files_data.items():
-        print(f"Processing {file}: extracting {min_length} from {len(data)} samples")
-        # Take only up to min_length samples from each file
-        balanced_data = data[:min_length]
-
-        for item in balanced_data:
-            if isinstance(item, dict) and "handData" in item and "label" in item:
-                # Create flat list: handData + label
-                row = item["handData"] + [item["label"]]
-                testing_data.append(row)
-
-    print("\n=== Processing Training Data ===")
-    for file, data in training_files_data.items():
-        print(f"Processing {file}: extracting {min_length} from {len(data)} samples")
-        # Take only up to min_length samples from each file
-        balanced_data = data[:min_length]
-
-        for item in balanced_data:
-            if isinstance(item, dict) and "handData" in item and "label" in item:
-                # Create flat list: handData + label
-                row = item["handData"] + [item["label"]]
-                training_data.append(row)
-
-    if not training_data or not testing_data:
-        print(
-            "ERROR: No valid data loaded. Check your JSON file format and run modify_data.py first."
-        )
-        return
-
-    # Convert to numpy arrays
-    training_data = np.array(training_data)
-    testing_data = np.array(testing_data)
-
-    print(f"\n=== Final Dataset Statistics ===")
-    print(f"Training data shape: {training_data.shape}")
-    print(f"Testing data shape: {testing_data.shape}")
-    print(f"Total combined data: {len(training_data) + len(testing_data)} samples")
-
-    # Shuffle data
-    np.random.shuffle(training_data)
-    np.random.shuffle(testing_data)
-
-    # output stats
-    print(
-        f"Training data: {len(training_data)} samples ({len(training_data)/(len(training_data) + len(testing_data))*100:.1f}%)"
-    )
-    print(
-        f"Test data: {len(testing_data)} samples ({len(testing_data)/(len(testing_data) + len(training_data))*100:.1f}%)"
-    )
-
-    # Create directories if they don't exist
-    os.makedirs("src/train_data", exist_ok=True)
-    os.makedirs("src/test_data", exist_ok=True)
-
-    # Save the split data
-    torch.save(training_data, "src/train_data/train_split.pt")
-    torch.save(testing_data, "src/test_data/test_split.pt")
-
-    batch_size = 16  # Keep consistent
-    num_epochs = 10  # Simplified epoch calculation
-
-    # Prepare data loaders
-    X_train = torch.tensor(training_data[:, :-1], dtype=torch.float32)
-    y_train = torch.tensor(training_data[:, -1], dtype=torch.long)
+    X_train = torch.tensor(train_data[:, :-1])
+    y_train = torch.tensor(train_data[:, -1])
     train_loader = torch.utils.data.DataLoader(
-        list(zip(X_train, y_train)), shuffle=True, batch_size=batch_size
+        list(zip(X_train, y_train)), shuffle=True, batch_size=16
     )
 
-    X_test = torch.tensor(testing_data[:, :-1], dtype=torch.float32)
-    y_test = torch.tensor(testing_data[:, -1], dtype=torch.long)
+    X_test = torch.tensor(test_data[:, :-1])
+    y_test = torch.tensor(test_data[:, -1])
     test_loader = torch.utils.data.DataLoader(
-        list(zip(X_test, y_test)), shuffle=False, batch_size=batch_size
+        list(zip(X_test, y_test)), shuffle=True, batch_size=16
     )
 
-    model = FeedforwardNeuralNetModel(input_dim, 100, output_dim)
+    model = FeedforwardNeuralNetModel(input_dim, None, 5)
     criterion = nn.BCELoss()
     learning_rate = 0.0004
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     iter = 0
 
     for epoch in range(num_epochs):
-        total_loss = 0
-        correct = 0
-        total = 0
-
         for i, (X, Y) in enumerate(train_loader):
+            Y = Y.view(-1, 1)
             optimizer.zero_grad()
-            outputs = model(X)
-            loss = criterion(outputs, Y)
+            outputs = model(X.float())
+            loss = criterion(outputs, Y.float())
             loss.backward()
             optimizer.step()
+            iter += 1
 
-            total_loss += loss.item()
-            _, predicted = torch.max(outputs.data, 1)
-            total += Y.size(0)
-            correct += (predicted == Y).sum().item()
+            if iter % 500 == 0:
+                correct = 0
+                total = 0
+                all_labels = []
+                all_probs = []
+                for X, Y in test_loader:
+                    outputs = model(X.float())
+                    probs = outputs.detach().numpy().flatten()
+                    predicted = (outputs > detect_threshold).float()
+                    total += Y.size(0)
+                    correct += (predicted == Y.view(-1, 1)).sum().item()
+                    all_labels.extend(Y.numpy())
+                    all_probs.extend(probs)
 
-        # Evaluation after each epoch
-        model.eval()
-        test_correct = 0
-        test_total = 0
-        all_predictions = []
-        all_labels = []
+                accuracy = 100 * correct / total
+                auc_roc = roc_auc_score(all_labels, all_probs)
+                precision, recall, _ = precision_recall_curve(all_labels, all_probs)
+                auc_pr = auc(recall, precision)
 
-        with torch.no_grad():
-            for X, Y in test_loader:
-                outputs = model(X)
-                _, predicted = torch.max(outputs, 1)
-                test_total += Y.size(0)
-                test_correct += (predicted == Y).sum().item()
-                all_predictions.extend(predicted.numpy())
-                all_labels.extend(Y.numpy())
+                # Example: Log metrics to the database
+                model_type = (
+                    "binary classification"  # Adjust based on your specific model type
+                )
 
-        train_accuracy = 100 * correct / total
-        test_accuracy = 100 * test_correct / test_total
-        avg_loss = total_loss / len(train_loader)
+                # Logging disabled for package release
+                # utils.log_training_metrics(auc_pr, auc_roc, loss.item(), model_type)
 
-        print(f"Epoch [{epoch+1}/{num_epochs}]:")
-        print(f"  Train Loss: {avg_loss:.4f}, Train Acc: {train_accuracy:.2f}%")
-        print(f"  Test Acc: {test_accuracy:.2f}%")
-
-        model.train()
-
-    # Final evaluation with classification report
-    print("\n=== Final Model Performance ===")
-    print("Classification Report:")
-    print(
-        classification_report(
-            all_labels,
-            all_predictions,
-            target_names=["Closed Fist", "Finger Gun", "Peace Sign", "Thumbs Up"],
-        )
-    )
+                print(
+                    "Iteration: {}. Loss: {}. Accuracy: {}. AUC-ROC: {:.4f}. AUC-PR: {:.4f}".format(
+                        iter, loss.item(), accuracy, auc_roc, auc_pr
+                    )
+                )
 
     # Extract the model's state dictionary, convert to JSON serializable format
     state_dict = model.state_dict()
@@ -267,14 +170,11 @@ def main():
         json.dump(serializable_state_dict, f)
 
     # Store as onnx for compatibility with Unity Barracuda
-    dummy_input = torch.randn(1, input_dim)
-    torch.onnx.export(
-        model,
-        dummy_input,
-        SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx",
-    )
+    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
+    onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
 
-    print(f"\nModel weights saved to {SAVE_MODEL_PATH + SAVE_MODEL_FILENAME}")
+    print("\n--- Model Training Complete ---")
+    print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
 
 
 if __name__ == "__main__":

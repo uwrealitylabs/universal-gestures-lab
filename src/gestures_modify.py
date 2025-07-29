@@ -1,20 +1,19 @@
-import psycopg2
-from dotenv import load_dotenv
-from datetime import datetime
+# import psycopg2
+# from dotenv import load_dotenv
+# from datetime import datetime
 import os
-from . import utils
 import torch
 import torch.nn as nn
-import torchvision
-import torchvision.transforms as transforms
+# import torchvision
+# import torchvision.transforms as transforms
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
-import pandas as pd
-import os
+# import numpy as np
+# import pandas as pd
+# import os
 import json
-from pprint import pprint
-from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+# from pprint import pprint
+# from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 from sklearn.model_selection import train_test_split
 import random
 
@@ -24,6 +23,8 @@ import random
 input_dim = 17 # assume same feature # as model.py for now
 output_dim = 1 # binary classification (is feature or is not feature)
 activation_threshold = 0.7 # threshold for classification as a feature
+learning_rate = 0.001 
+epochs = 10 # number of epochs to train model (set to 10 for testing)
 
 #Filepaths
 SAVE_MODEL_PATH = "trained_model/"
@@ -70,12 +71,35 @@ def load_data(dataset, batch_size=64):
 
 
 def convert_to_tensors(data: object) -> torch.Tensor:
-    # Converts JSON object into tensors storing featurs and labels
+    # Converts JSON object into tensors storing features and labels
     all_X = [item["handData"] for item in data] 
-    all_Y = [item["label"] for item in data]
+    all_Y = [item["confidence"] for item in data]
     X_tensor = torch.tensor(all_X, dtype=torch.float32)
     Y_tensor = torch.tensor(all_Y, dtype=torch.float32)
     return (X_tensor, Y_tensor)
+
+
+
+def export_to_onnx(model):
+     # Extract the model's state dictionary, convert to JSON serializable format
+    state_dict = model.state_dict()
+    serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+
+    # Create directory if it does not exist
+    if not os.path.exists(SAVE_MODEL_PATH):
+        os.makedirs(SAVE_MODEL_PATH)
+
+    # Store state dictionary
+    with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
+        json.dump(serializable_state_dict, f)
+
+    # Store as onnx for compatibility with Unity Barracuda
+    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
+    onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
+
+    print("\n--- Model Training Complete ---")
+    print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
+
 
 
 def main():
@@ -87,14 +111,38 @@ def main():
     combined_data = positive_examples + negative_examples
     random.shuffle(combined_data)  # Shuffle the combined data
     (train_data_JSON, test_data_JSON) = train_test_split(combined_data, test_size=0.2, random_state=42)
-
     train_tensors = convert_to_tensors(train_data_JSON)
     test_tensors = convert_to_tensors(test_data_JSON)
 
-    # Unpack tensors and 
     train_loader = DataLoader(TensorDataset(*train_tensors), batch_size=64, shuffle=True)
     test_loader = DataLoader(TensorDataset(*test_tensors), batch_size=64, shuffle=False)
 
    # Initialize model
     model = feed_forward_gesture_mlp()
-   # ...
+    
+    # Set up the training loop
+    criterion = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    for epoch in range(epochs):
+        # Get a prediction
+        model.train()
+        total_loss = 0.0
+        for X_train, Y_train in train_loader:
+            outputs = model(X_train)
+            loss = criterion(outputs.squeeze(), Y_train)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        if epoch % 2 == 0:
+            print(f"Epoch [{epoch}/{epochs}], Loss: {total_loss:.4f}")
+    
+    # Export the trained model to ONNX format
+    export_to_onnx(model)
+    
+if __name__ == "__main__":
+    main()
+
+        
+    

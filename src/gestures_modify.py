@@ -23,7 +23,7 @@ input_dim = 17 # assume same feature # as model.py for now
 output_dim = 4 # 4 output classes for gestures (from model_multi_class.py)
 activation_threshold = 0.7 # threshold for classification as a feature
 learning_rate = 0.001 
-epochs = 10 # number of epochs to train model (set to 10 for testing)
+epochs = 20 # number of epochs to train model (set to 10 for testing)
 
 #Filepaths
 SAVE_MODEL_PATH = "trained_model/"
@@ -211,18 +211,17 @@ def main():
     
     batch_size = 16  # Keep consistent
     
-    # Prepare data loaders
     X_train = torch.tensor(train_data_tensor[:, :-1], dtype=torch.float32)
     y_train = torch.tensor(train_data_tensor[:, -1], dtype=torch.long)
     train_loader = torch.utils.data.DataLoader(
         list(zip(X_train, y_train)), shuffle=True, batch_size=batch_size
     )
 
-    # X_test = torch.tensor(test_data_tensor[:, :-1], dtype=torch.float32)
-    # y_test = torch.tensor(test_data_tensor[:, -1], dtype=torch.long)
-    # test_loader = torch.utils.data.DataLoader(
-    #     list(zip(X_test, y_test)), shuffle=False, batch_size=batch_size
-    # )
+    X_test = torch.tensor(test_data_tensor[:, :-1], dtype=torch.float32)
+    y_test = torch.tensor(test_data_tensor[:, -1], dtype=torch.long)
+    test_loader = torch.utils.data.DataLoader(
+        list(zip(X_test, y_test)), shuffle=False, batch_size=batch_size
+    )
 
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
     print(f"Unique labels in training: {torch.unique(y_train)}")
@@ -249,15 +248,38 @@ def main():
             _, predicted = torch.max(outputs.data, 1)
             total += Y.size(0)
             correct += (predicted == Y).sum().item()
-        print(f"Epoch [{epoch + 1}/{epochs}], Loss: {total_loss / len(train_loader):.4f}")
-        print(f"Accuracy: {100 * correct / total:.2f}%")
+
+        # Evaluate accuracy of model
+        model.eval() 
+        test_correct = 0
+        test_total = 0
+        all_predictions = []
+        all_labels = []
         
-    print("\n--- Model Training Complete ---")
-    print(f"Final model accuracy: {100 * correct / total:.2f}%")
+        with torch.no_grad():
+            for X, Y in test_loader:
+                outputs = model(X)
+                _, predicted = torch.max(outputs, 1)
+                test_total += Y.size(0)
+                test_correct += (predicted == Y).sum().item()
+                all_predictions.extend(predicted.numpy())
+                all_labels.extend(Y.numpy())
+        
+        train_accuracy = 100 * correct / total
+        test_accuracy = 100 * test_correct / test_total
+        avg_loss = total_loss / len(train_loader)
+        
+        print(f"\nEpoch [{epoch + 1}/{epochs}]")
+        print(f"  Train Loss: {avg_loss:.4f}, Train Acc: {train_accuracy:.2f}%")
+        print(f"  Test Acc: {test_accuracy:.2f}%")
+        model.train()
+
+    #Final Evaluation
+    print("\n--- Model Training/Evaluation Complete ---")
+    print(f"Final training accuracy: {train_accuracy:.2f}%")
+    print(f"Final test accuracy: {test_accuracy:.2f}%")
+    print(f"Total training samples: {total}, Total test samples: {test_total}")
     export_to_onnx(model) # Export the trained model to ONNX format
     
 if __name__ == "__main__":
     main()
-
-        
-    

@@ -14,7 +14,7 @@ target_answers = {
     0: ["closedFistPositive.json"],
     1: ["fingerGunPositive.json"],
     2: ["peaceSignPositive.json"],
-    3: ["thumbsupJustin.json", "thumbsuplily.json", "thumbsupNathan.json"],
+    3: ["thumbsupJustin.json", "thumbsuplily.json", "thumbsupNathan.json"]
 }
 
 # -------------------------------------------------- #

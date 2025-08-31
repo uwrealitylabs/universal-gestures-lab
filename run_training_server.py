@@ -4,7 +4,27 @@ from src import model_two_hands
 from src import process_data
 import os
 import shutil
+import socket
 app = Flask(__name__)
+
+def print_connection_instructions(port):
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        lan_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        lan_ip = local_ip
+    print("\n" + "="*60)
+    print("Flask server is starting!\n")
+    print(f"Paste this address into the Uri field in Unity if you’re using the Meta XR Simulator on your computer, or a headset plugged into your computer in Link Mode:\n")
+    print(f"    http://127.0.0.1:{port}\n")
+    print(f"Paste this address into the Uri field in Unity if you’re using an unplugged headset on the same WiFi network as your computer:\n")
+    print(f"    http://{lan_ip}:{port}\n")
+    print("="*60 + "\n")
+
 
 
 @app.route('/train_model_one_hand/', methods=['POST'])
@@ -44,6 +64,7 @@ def clearServerData():
 
 
 
-
-
-app.run(port="8080", host="0.0.0.0", debug=True)
+if __name__ == "__main__":
+    port = 8080
+    print_connection_instructions(port)
+    app.run(port=port, host="0.0.0.0", debug=True)

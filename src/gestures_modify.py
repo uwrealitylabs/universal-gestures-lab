@@ -1,22 +1,10 @@
-# import psycopg2
-# from dotenv import load_dotenv
-# from datetime import datetime
 import os
 import torch
 import torch.nn as nn
-# import torchvision
-# import torchvision.transforms as transforms
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-# import pandas as pd
-# import os
 import json
-from sklearn.model_selection import train_test_split
-import random
 import warnings # Ignore warning that .onnx export is using ONNX opset 18 
-
-# Network aims to retrieve the N-dim fingerprint right before the model outputs to logits
 
 #Hyperparameters
 input_dim = 17 # assume same feature # as model.py for now
@@ -43,11 +31,12 @@ class feed_forward_gesture_mlp(nn.Module):
         self.output = nn.Linear(hidden_dim, out_dim) # final fc layer 128 -> 4 output dims 
     
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.output(x)
-        return x 
+        x_1 = F.relu(self.fc1(x))
+        x_2 = F.relu(self.fc2(x_1))
+        n_dim_fingerprint = self.fc3(x_2)
+        x_3 = F.relu(n_dim_fingerprint)
+        x_4 = self.output(x_3)
+        return {"final_logits": x_4, "n_dim_fingerprint": n_dim_fingerprint}
 
 # Data set
 def split_feature_label(data):
@@ -70,6 +59,8 @@ def load_data(dataset, batch_size=64):
 
 
 def export_to_onnx(model):
+    model.eval()
+    
      # Extract the model's state dictionary, convert to JSON serializable format
     state_dict = model.state_dict()
     serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
@@ -88,7 +79,6 @@ def export_to_onnx(model):
         onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
         onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
     print("\nModel weights and .onnx successfully saved to", SAVE_MODEL_PATH)
-
 
 def load_json_data(test_path, train_path):
     # Load all data files first (without processing)
@@ -240,7 +230,7 @@ def main():
         
         for _, (X, Y) in enumerate(train_loader):
             optimizer.zero_grad()
-            outputs = model(X)
+            outputs = model(X)["final_logits"]
             loss = criterion(outputs, Y)
             loss.backward()
             optimizer.step()
@@ -258,7 +248,7 @@ def main():
         
         with torch.no_grad():
             for X, Y in test_loader:
-                outputs = model(X)
+                outputs = model(X)["final_logits"]
                 _, predicted = torch.max(outputs, 1)
                 test_total += Y.size(0)
                 test_correct += (predicted == Y).sum().item()

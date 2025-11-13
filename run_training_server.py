@@ -9,41 +9,105 @@ app = Flask(__name__)
 
 @app.route('/train_model_one_hand/', methods=['POST'])
 def train_mode_one_hand():
-  data = request.json
 
+  # parsing the JSON request
+  try:
+   data = request.json
+   if data is None:
+     raise ValueError("Invalid JSON")
+  except Exception as e:
+    return jsonify({"error":"Invalid JSON payload",
+                    "type":e.__class__.__name__}), 400
+
+  # clearing server data
+  try:
+    clearServerData()
+  except Exception as e:
+    return jsonify({"error":"Filesystem error",
+                    "type":e.__class__.__name__}), 500
   
-  clearServerData()
+  # write to data.json
+  try:
+    with open("src/serverdata/data.json", "w") as f:
+      f.write(str(data).replace("'","\"" ))
+  except Exception as e:
+    return jsonify({"error":"Failed to write data.json",
+                    "type":e.__class__.__name__}), 500
 
-  with open("src/serverdata/data.json", "w") as f:
-    f.write(str(data).replace("'","\"" ))
+  # data preprocessing
+  try:
+    process_data.split("src/serverdata")
+  except Exception as e:
+    return jsonify({"error":"Preprocessing failed",
+                    "type":e.__class__.__name__}), 500
+  
+  # model training
+  try:
+    model.main()
+  except Exception as e:
+    return jsonify({"error":"Model training failed",
+                    "type":e.__class__.__name__}), 500
 
-  process_data.split("src/serverdata")
-  model.main()
-  return send_file("trained_model/model_weights.onnx", as_attachment=True)
+  # sending/returning file
+  try:
+    model_file = os.path.join("trained_model", "model_weights.onnx")
+    if not os.path.exists(model_file):
+      return jsonify({"error":"Trained model file not found",
+                      "expected_path":model_file}), 500
+    return send_file(model_file, as_attachment=True)
+  except Exception as e:
+    return jsonify({"error":"Failed to send file",
+                    "type":e.__class__.__name__}), 500
 
   # return jsonify({"message": "Data received", "data": data}), 200
 
 
 @app.route('/train_model_two_hands/', methods=['POST'])
 def train_mode_two_hands():
-  data = request.json
+  
+  # parsing the JSON request
+  try:
+    data = request.json
+  except Exception as e:
+    return jsonify({"error":"Invalid JSON payload",
+                    "type":e.__class__.__name__}), 400
 
-  with open("src/serverdata/data.json", "w") as f:
-    f.write(str(data).replace("'","\"" ))
+  # writing to json.data 
+  try:
+    with open("src/serverdata/data.json", "w") as f:
+      f.write(str(data).replace("'","\"" ))
+  except Exception as e:
+    return jsonify({"error":"Failed to write data.json",
+                    "type":e.__class__.__name__}), 500
 
-  process_data.split("src/serverdata")
-  model_two_hands.main()
-
-  return send_file("trained_model/model_two_hands_weights.onnx", as_attachment=True)
+  # data preprocessing
+  try:
+    process_data.split("src/serverdata")
+  except Exception as e:
+    return jsonify({"error":"Preprocessing failed",
+                    "type":e.__class__.__name__}), 500
+  
+  # model training
+  try:
+    model_two_hands.main()
+  except Exception as e:
+    return jsonify({"error":"Model training failed",
+                    "type":e.__class__.__name__}), 500
+  
+  # sending and returning file
+  try:
+    model_file = os.path.join("trained_model","model_two_hands_weights.onnx")
+    if not os.path.exists(model_file):
+      return jsonify({"error":"Trained model file not found",
+                      "expected_path":model_file}), 500
+    return send_file(model_file, as_attachment=True)
+  except Exception as e:
+    return jsonify({"error":"Failed to send file",
+                    "type":e.__class__.__name__}), 500
   # return jsonify({"message": "Data received", "data": data}), 200
-
 
 def clearServerData():
   shutil.rmtree('src/serverdata')
   os.makedirs('src/serverdata')
-
-
-
-
 
 app.run(port="8080", host="0.0.0.0", debug=True)

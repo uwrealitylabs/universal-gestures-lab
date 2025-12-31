@@ -288,6 +288,8 @@ def main():
         json.dump(serializable_state_dict, f)
 
     # ONNX export for Unity
+    # NOTE: may fail on PyTorch 2.9.x due to upstream onnxscript bug
+    # if export fails, use export_onnx.py on machine with working PyTorch version
     dummy_input = torch.randn(1, 15, 1, input_dim).to(device)
     onnx_filename = SAVE_MODEL_FILENAME.replace('.json', '.onnx')
     torch.onnx.export(
@@ -296,7 +298,10 @@ def main():
         os.path.join(SAVE_MODEL_PATH, onnx_filename),
         input_names=['input'],
         output_names=['output'],
-        dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
+        dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}},
+        export_params=True,
+        opset_version=12,
+        do_constant_folding=True
     )
 
     print(f"[OK] Model weights saved to {SAVE_MODEL_PATH}/{SAVE_MODEL_FILENAME}")

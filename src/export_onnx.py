@@ -1,3 +1,14 @@
+"""
+Export trained multi-class model to ONNX format for Unity Barracuda
+
+NOTE: ONNX export currently fails on PyTorch 2.9.x due to upstream bug in onnxscript library.
+This is a known issue - see: https://github.com/pytorch/pytorch/issues
+Workarounds:
+  - Export on machine with PyTorch <2.5
+  - Wait for PyTorch/onnxscript patch
+  - Use Docker container with working PyTorch version
+"""
+
 import torch
 import os
 import json
@@ -13,6 +24,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 num_classes = 3
 input_dim = 17
 
+print("Loading model weights...")
 # Load normalization stats
 with open(NORM_STATS_PATH, 'r') as f:
     norm_stats = json.load(f)
@@ -31,6 +43,7 @@ with open(os.path.join(SAVE_MODEL_PATH, SAVE_MODEL_FILENAME), 'r') as f:
 model.eval()
 
 # Export to ONNX
+print("Exporting to ONNX...")
 dummy_input = torch.randn(1, 15, 1, input_dim).to(device)
 onnx_filename = SAVE_MODEL_FILENAME.replace('.json', '.onnx')
 

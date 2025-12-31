@@ -18,11 +18,12 @@ OUTPUT_TEST = os.path.join(SCRIPT_DIR, "test_data", "test_sequences_multiclass.p
 NORM_STATS_PATH = os.path.join(os.path.dirname(SCRIPT_DIR), "trained_model", "normalization_stats_multiclass.json")
 
 # map folder names to class IDs
+# note: "pos" and "neg" are legacy folder names from binary classification
 # class 0 should be "no gesture" to have a base case
 GESTURE_CLASSES = {
-    "neg": 0,                    # no gesture / resting hand
-    "pos": 1,                    # fire finger gun
-    "Squeez_Palm_Up": 2,         # squeeze palm up
+    "neg": 0,                    # no gesture / resting hand (folder: neg/)
+    "pos": 1,                    # fire finger gun (folder: pos/ - legacy name from binary classification)
+    "Squeez_Palm_Up": 2,         # squeeze palm up (folder: Squeez_Palm_Up/)
     # "future_gesture": 3,       # add more here when you record new gestures
 }
 

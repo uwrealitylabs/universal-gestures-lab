@@ -5,13 +5,14 @@ import torch.nn as nn
 
 TARGET_FRAME_SIZE = 255
 TARGET_SEQ_LEN = 32
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 CLASS_DIRS = {
-    "fire_finger_gun": Path("src/data(Dynamic)/pos"),
-    "make_first_palm_up": Path("src/data(Dynamic)/Squeez_Palm_Up/pos"),
+    "fire_finger_gun": BASE_DIR / "src/data(Dynamic)/pos",
+    "make_first_palm_up": BASE_DIR / "src/data(Dynamic)/Squeez_Palm_Up/pos",
 }
 
-MODEL_SAVE_DIR = Path("trained_model")
+MODEL_SAVE_DIR = BASE_DIR / "trained_model"
 MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 MODEL_WEIGHTS_PATH = MODEL_SAVE_DIR / "dynamic_multiclass_model.pth"
@@ -53,6 +54,7 @@ def load_dynamic_sample(file_path: Path) -> np.ndarray:
 
 
 def load_dataset():
+    print("loading dataset...")
     samples = []
     labels = []
     class_names = list(CLASS_DIRS.keys())
@@ -69,6 +71,11 @@ def load_dataset():
 
     X = np.array(samples, dtype=np.float32)
     y = np.array(labels, dtype=np.int64)
+    
+    if (len(X) == 0) or (len(y) == 0):
+        raise ValueError("No data loaded. Please check the dataset paths and contents.")
+    
+    
     return X, y, class_names
 
 

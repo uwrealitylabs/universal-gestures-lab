@@ -1,7 +1,7 @@
 from pathlib import Path
 import torch
 
-from src.dynamic_model_utils import (
+from dynamic_model_utils import (
     TARGET_FRAME_SIZE,
     MODEL_WEIGHTS_PATH,
     load_dynamic_sample,

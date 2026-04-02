@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 
-from src.dynamic_model_utils import (
+from dynamic_model_utils import (
     TARGET_FRAME_SIZE,
     MODEL_WEIGHTS_PATH,
     load_dataset,

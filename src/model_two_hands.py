@@ -90,6 +90,9 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     iter = 0
 
+    # model.training = True. Puts the model in training mode
+    model.train()
+
     for epoch in range(num_epochs):
         for i, (X, Y) in enumerate(train_loader):
             Y = Y.view(-1, 1)
@@ -129,11 +132,18 @@ def main():
         json.dump(serializable_state_dict, f)
 
     # Store as onnx for compatibility with Unity Barracuda
-    onnx_program = torch.onnx.dynamo_export(model, torch.randn(1, input_dim))
+    export_device = torch.device("cpu")
+
+    # model.training = False. Puts the model in inference/testing mode
+    model.eval()
+
+    model.to(export_device)
+
+    random_input = torch.randn(1, input_dim).to(export_device)
+
+    onnx_program = torch.onnx.dynamo_export(model, random_input)
     onnx_program.save(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME.split(".")[0] + ".onnx")
-
-
-
+ 
     print("\n--- Model Training Complete ---")
     print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
 

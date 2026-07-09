@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
+from sklearn.model_selection import train_test_split
 import os
 import json
 
@@ -20,29 +21,29 @@ def process_data(dataset_file):
 
     # Convert the list of lists to a torch tensor
     return data_list
-    
+
 def split(dire = "src/data"):
     data_files = os.listdir(dire)
-    
-    print("Loading data files")
-    full_dataset = []
-    train = []
-    for dataset_name in data_files:
-        full_dataset.extend(process_data(dire + "/" +dataset_name))
 
-    print("Splitting data into training and testing")
-    train_size =  int(0.8 * len(full_dataset))
-    test_size = len(full_dataset) - train_size
-    train, test= torch.utils.data.random_split(full_dataset, [train_size, test_size])
+    # split by file first instead of individual frame, as frames from the same recording look identical
+    # and splitting after would make near-duplicate frames leak across training and testing
+    print("Splitting recording files into training and testing")
+    train_files, test_files = train_test_split(data_files, test_size=0.2, random_state=42)
 
     print("Processing training data")
+    train = []
+    for dataset_name in train_files:
+        train.extend(process_data(dire + "/" + dataset_name))
     train_tensor = torch.tensor(train)
     torch.save(train_tensor, "src/train_data/train_0.pt")
-    
+
     print("Processing testing data")
+    test = []
+    for dataset_name in test_files:
+        test.extend(process_data(dire + "/" + dataset_name))
     test_tensor = torch.tensor(test)
     torch.save(test_tensor, "src/test_data/test_0.pt")
-    
+
 def main():
     split()
     # process_data(data_path, output_path)

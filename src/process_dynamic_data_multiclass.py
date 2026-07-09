@@ -77,12 +77,13 @@ def load_gesture_data(data_dir, gesture_name, class_label, window_size, step_siz
     sequences = []
     labels = []
     lengths = []
+    file_ids = []  # which recording each window came from, for a file-level split
 
     gesture_path = os.path.join(data_dir, gesture_name)
 
     if not os.path.exists(gesture_path):
         print(f"  [WARN] Gesture folder not found: {gesture_name}")
-        return sequences, labels, lengths
+        return sequences, labels, lengths, file_ids
 
     # check folder structure
     pos_path = os.path.join(gesture_path, "pos")
@@ -116,6 +117,7 @@ def load_gesture_data(data_dir, gesture_name, class_label, window_size, step_siz
                         sequences.append(window)
                         labels.append(class_label)
                         lengths.append(window_size)
+                        file_ids.append(file_path)
 
     else:
         # no pos/neg structure, just load all files
@@ -144,8 +146,9 @@ def load_gesture_data(data_dir, gesture_name, class_label, window_size, step_siz
                         sequences.append(window)
                         labels.append(class_label)
                         lengths.append(window_size)
+                        file_ids.append(file_path)
 
-    return sequences, labels, lengths
+    return sequences, labels, lengths, file_ids
 
 def main():
     print("="*60)
@@ -170,11 +173,12 @@ def main():
     all_sequences = []
     all_labels = []
     all_lengths = []
+    all_file_ids = []
 
     available_classes = 0
     for gesture_name, class_label in GESTURE_CLASSES.items():
         print(f"\nClass {class_label}: {gesture_name}")
-        sequences, labels, lengths = load_gesture_data(
+        sequences, labels, lengths, file_ids = load_gesture_data(
             DATA_DIR, gesture_name, class_label, window_size, step_size
         )
 
@@ -182,6 +186,7 @@ def main():
             all_sequences.extend(sequences)
             all_labels.extend(labels)
             all_lengths.extend(lengths)
+            all_file_ids.extend(file_ids)
             available_classes += 1
             print(f"  Loaded {len(sequences)} windows")
         else:
@@ -230,11 +235,27 @@ def main():
         json.dump({'mean': mean, 'std': std}, f)
     print(f"  Saved to: {NORM_STATS_PATH}")
 
-    # train/test split with stratify to keep classes balanced
-    print(f"\nSplitting into train/test (80/20)...")
-    X_train, X_test, y_train, y_test, lengths_train, lengths_test = train_test_split(
-        X, y, lengths, test_size=0.2, random_state=42, stratify=y
-    )
+    # split by source file, not window, since windows overlap 50%, splitting after windowing
+    # puts near duplicate windows from the same recording on both sides of the split
+    print(f"\nSplitting into train/test (80/20, by recording file, per class)...")
+    file_ids = np.array(all_file_ids)
+    labels_arr = np.array(all_labels)
+    train_files_all = []
+    test_files_all = []
+    for class_label in np.unique(labels_arr):
+        class_files = np.unique(file_ids[labels_arr == class_label])
+        if len(class_files) < 2:
+            print(f"  [WARN] Class {class_label} has only {len(class_files)} recording(s), all going to train")
+            train_files_all.extend(class_files)
+            continue
+        tr_files, te_files = train_test_split(class_files, test_size=0.2, random_state=42)
+        train_files_all.extend(tr_files)
+        test_files_all.extend(te_files)
+    train_mask = np.isin(file_ids, train_files_all)
+    test_mask = np.isin(file_ids, test_files_all)
+
+    X_train, y_train, lengths_train = X[train_mask], y[train_mask], lengths[train_mask]
+    X_test, y_test, lengths_test = X[test_mask], y[test_mask], lengths[test_mask]
 
     print(f"  Train: {len(X_train)} samples")
     print(f"  Test: {len(X_test)} samples")

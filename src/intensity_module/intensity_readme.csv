@@ -1,0 +1,6 @@
+intensity_module/
+  intensity_scorer.py   # main module: load, preprocess, extract, score
+  feature_ranges.json   # precomputed min/max per feature across dataset
+  test_scorer.py        # quick script to run it on the 3 existing gestures
+
+  

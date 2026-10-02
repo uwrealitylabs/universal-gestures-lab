@@ -29,9 +29,8 @@ ANGLE_IDX = CURL_IDX + ABDUCTION_IDX + FLEXION_IDX
 FRAME_RATE = 30
 DT = 1.0 / FRAME_RATE
 
-# PCA on the corrected features gave 0.3545, 0.3234, and 0.3221.
-# These rounded weights keep the three intensity measurements nearly balanced.
-W = {"angular_speed": 0.36, "angular_accel": 0.32, "opposition_speed": 0.32}
+# First-principal-component weights from PCA on the corrected features.
+W = {"angular_speed": 0.3545, "angular_accel": 0.3234, "opposition_speed": 0.3221}
 assert abs(sum(W.values()) - 1.0) < 1e-9
 
 

@@ -29,8 +29,8 @@ ANGLE_IDX = CURL_IDX + ABDUCTION_IDX + FLEXION_IDX
 FRAME_RATE = 30
 DT = 1.0 / FRAME_RATE
 
-# Weights — acceleration weighted most, it best captures explosiveness
-W = {"angular_accel": 0.45, "angular_speed": 0.35, "opposition_speed": 0.20}
+# First-principal-component weights from PCA on the corrected features.
+W = {"angular_speed": 0.3545, "angular_accel": 0.3234, "opposition_speed": 0.3221}
 assert abs(sum(W.values()) - 1.0) < 1e-9
 
 

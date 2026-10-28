@@ -1,0 +1,82 @@
+{
+  "feature_names": [
+    "thumbCurl",
+    "thumbAbd",
+    "idxCurl",
+    "idxAbd",
+    "idxFlex",
+    "idxOpp",
+    "midCurl",
+    "midAbd",
+    "midFlex",
+    "midOpp",
+    "ringCurl",
+    "ringAbd",
+    "ringFlex",
+    "ringOpp",
+    "pinkyCurl",
+    "pinkyFlex",
+    "pinkyOpp"
+  ],
+  "gestures": [
+    "claw",
+    "closed fist",
+    "finger gun",
+    "horns",
+    "index point",
+    "ok sign",
+    "open palm",
+    "peace sign",
+    "pinch",
+    "pinky up",
+    "shaka",
+    "three fingers",
+    "thumbs up"
+  ],
+  "input": "raw features, shape [batch, 17] (z-scoring is inside the model)",
+  "output": "L2-normalised embedding, shape [batch, 16]",
+  "embedding_dim": 16,
+  "no_gesture_cutoff": 0.5694765448570251,
+  "cutoff_rule": "f1_plateau_middle",
+  "cutoffs_by_rule": {
+    "best_f1": 0.4446057975292206,
+    "f1_plateau_middle": 0.5694765448570251,
+    "false_trigger_1pct": 0.458280086517334,
+    "false_trigger_5pct": 0.7949419021606445
+  },
+  "fold_cutoff_range_by_rule": {
+    "best_f1": [
+      0.21112379431724548,
+      0.8279262781143188
+    ],
+    "f1_plateau_middle": [
+      0.24521832168102264,
+      0.7966914176940918
+    ],
+    "false_trigger_1pct": [
+      0.13376079499721527,
+      0.8631384372711182
+    ],
+    "false_trigger_5pct": [
+      0.23373299837112427,
+      1.294590711593628
+    ]
+  },
+  "cutoff_meaning": "distance to the nearest prototype > cutoff means no gesture",
+  "cutoff_source": "median of the cutoffs chosen on validation gestures in cross-validation; provisional, not measured on this model",
+  "epochs": 1,
+  "onnx_max_diff": 2.384185791015625e-07,
+  "onnx_opset": 12,
+  "args": {
+    "augment": false,
+    "near_miss": false,
+    "final": true,
+    "epochs": 30,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "cutoff_rule": "f1_plateau_middle"
+  }
+}

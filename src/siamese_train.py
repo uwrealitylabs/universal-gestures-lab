@@ -1,5 +1,5 @@
 """
-Pre-train the Siamese (triplet-loss) embedding on `src/siamese training data` and test
+Pre-train the Siamese (triplet-loss) embedding on `src/siamese/siamese training data` and test
 few-shot learning on gestures the model never saw during training.
 
 Each fold hides 3 gestures (test) and holds out 2 more (validation). The model trains on the
@@ -31,9 +31,9 @@ from pytorch_metric_learning import losses, miners
 from sklearn.metrics import f1_score
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-DATA_DIR = os.path.join(SCRIPT_DIR, "siamese training data")
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "trained_model", "siamese")
+SIAMESE_DIR = os.path.join(SCRIPT_DIR, "siamese")
+DATA_DIR = os.path.join(SIAMESE_DIR, "siamese training data")
+OUTPUT_DIR = os.path.join(SIAMESE_DIR, "trained_model")
 
 # Feature order written by Unity's UGDataExtractorScript (finger-only, no wrist pose)
 FEATURE_NAMES = [

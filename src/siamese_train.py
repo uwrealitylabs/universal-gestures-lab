@@ -9,12 +9,20 @@ Snell et al. 2017). The "no gesture" cutoff and the best epoch are chosen on the
 gestures, never on the test gestures (class-disjoint validation, Ravi & Larochelle 2017).
 All splits are by whole clip, never by frame.
 
+Data layout, one folder per person who recorded:
+    <person>/positive/<gesture>/<left|right>/<timestamp>.json
+    <person>/negative/<everyday|resting|transitions>/<left|right>/<timestamp>.json
+Gestures are taught and scored per person and hand: the K teaching clips and the scored clips
+come from the same person, as when someone teaches Unity their own gesture. A person with no
+negative recordings is scored against everyone else's test negatives.
+
 Run from the repo root:
     python -m src.siamese_train                 # few-shot evaluation, seed 0
     python -m src.siamese_train --seeds 0 1 2   # repeat with 3 seeds to measure run-to-run noise
     python -m src.siamese_train --augment       # + noise augmentation on gesture frames
     python -m src.siamese_train --near-miss     # + synthetic near-miss negatives
     python -m src.siamese_train --final         # also train on all gestures and export ONNX
+    python -m src.siamese_train --test-person edy   # never train on edy: scores on new hands
 """
 
 import argparse
@@ -22,6 +30,7 @@ import copy
 import json
 import os
 import time
+from collections import Counter
 from dataclasses import dataclass
 
 import numpy as np
@@ -93,6 +102,7 @@ RNG_BATCHES, RNG_NEAR_MISS, RNG_VALIDATION, RNG_TEST, RNG_NOISE, RNG_NEAR_MISS_S
 @dataclass
 class Clip:
     path: str           # relative to DATA_DIR; used as the clip id. File names are timestamps.
+    person: str         # who recorded it (top-level folder)
     kind: str           # "positive" or "negative"
     category: str       # gesture name, or negative category
     hand: str
@@ -101,25 +111,37 @@ class Clip:
 
 # ---------------------------------------------------------------- data
 
+def subfolders(path):
+    return sorted(name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name)))
+
+
 def load_clips(data_dir=DATA_DIR):
     clips = []
-    for kind, label in (("positive", 1), ("negative", 0)):
-        kind_dir = os.path.join(data_dir, kind)
-        for category in sorted(os.listdir(kind_dir)):
-            if not os.path.isdir(os.path.join(kind_dir, category)):
-                continue
-            for hand in HANDS:
-                hand_dir = os.path.join(kind_dir, category, hand)
-                for name in sorted(os.listdir(hand_dir)):
-                    if not name.endswith(".json"):
+    for person in subfolders(data_dir):
+        for kind, label in (("positive", 1), ("negative", 0)):
+            kind_dir = os.path.join(data_dir, person, kind)
+            if not os.path.isdir(kind_dir):
+                continue  # e.g. a person who recorded no negatives
+            for category in subfolders(kind_dir):
+                for hand in HANDS:
+                    hand_dir = os.path.join(kind_dir, category, hand)
+                    if not os.path.isdir(hand_dir):
                         continue
-                    with open(os.path.join(hand_dir, name)) as f:
-                        frames = json.load(f)
-                    X = np.array([frame["handData"] for frame in frames], dtype=np.float32)
-                    assert X.ndim == 2 and X.shape[1] == input_dim and len(X) > 0, name
-                    assert all(frame["confidence"] == label for frame in frames), f"label mismatch in {name}"
-                    clips.append(Clip(os.path.join(kind, category, hand, name), kind, category, hand, X))
+                    for name in sorted(os.listdir(hand_dir)):
+                        if not name.endswith(".json"):
+                            continue
+                        path = os.path.join(person, kind, category, hand, name)
+                        with open(os.path.join(data_dir, path)) as f:
+                            frames = json.load(f)
+                        X = np.array([frame["handData"] for frame in frames], dtype=np.float32)
+                        assert X.ndim == 2 and X.shape[1] == input_dim and len(X) > 0, path
+                        assert all(frame["confidence"] == label for frame in frames), f"label mismatch in {path}"
+                        clips.append(Clip(path, person, kind, category, hand, X))
     return clips
+
+
+def people_in(part_clips):
+    return sorted({c.person for c in part_clips})
 
 
 def make_folds(gestures, seed):
@@ -135,21 +157,26 @@ def make_folds(gestures, seed):
     return folds
 
 
-def split_clips(clips, hidden, val_gestures, hold_out_negatives=True):
+def split_clips(clips, hidden, val_gestures, hold_out_negatives=True, test_person=None):
     """Assign whole clips to train / val / test. Hidden gestures go to test, validation
     gestures to val, every other gesture to train. Negatives are split by time within each
-    category and hand: oldest 60% train, next 20% val, newest 20% test. Each negative folder
-    is one continuous recording, so a random split would put test clips between near-identical
-    training clips."""
+    person, category and hand: oldest 60% train, next 20% val, newest 20% test. Each negative
+    folder is one continuous recording, so a random split would put test clips between
+    near-identical training clips. None of the test person's clips are trained on or used for
+    validation: their hidden-gesture clips and all their negatives go to test, the rest is unused."""
     split = {part: [] for part in ("train_pos", "val_pos", "test_pos", "train_neg", "val_neg", "test_neg")}
     groups = {}
     for c in clips:
-        groups.setdefault((c.kind, c.category, c.hand), []).append(c)
-    for (kind, category, hand), group in sorted(groups.items()):
+        groups.setdefault((c.person, c.kind, c.category, c.hand), []).append(c)
+    for (person, kind, category, hand), group in sorted(groups.items()):
         group = sorted(group, key=lambda c: c.path)
         if kind == "positive":
-            part = "test_pos" if category in hidden else "val_pos" if category in val_gestures else "train_pos"
-            split[part] += group
+            if category in hidden:
+                split["test_pos"] += group
+            elif person != test_person:
+                split["val_pos" if category in val_gestures else "train_pos"] += group
+        elif person == test_person:
+            split["test_neg"] += group
         else:
             n_test = round(neg_test_fraction * len(group)) if hold_out_negatives else 0
             n_val = round(neg_val_fraction * len(group)) if hold_out_negatives else 0
@@ -160,9 +187,16 @@ def split_clips(clips, hidden, val_gestures, hold_out_negatives=True):
     return split
 
 
-def check_split(split, hidden, val_gestures):
+def check_held_out(split, person):
+    """Stop if any clip of the held-out person is used for training or validation."""
+    for part in ("train_pos", "val_pos", "train_neg", "val_neg"):
+        assert not any(c.person == person for c in split[part]), f"{person} has clips in {part}"
+
+
+def check_split(split, hidden, val_gestures, test_person=None):
     """Stop if any clip is in two parts, if a hidden or validation gesture leaked into another
-    part, or if the negatives are not split by time."""
+    part, if the test person leaked into training or validation, or if the negatives are not
+    split by time."""
     part_of = {}
     for part, part_clips in split.items():
         for c in part_clips:
@@ -173,16 +207,20 @@ def check_split(split, hidden, val_gestures):
     assert all(c.category in val_gestures for c in split["val_pos"]), "non-validation gesture in val_pos"
     assert not any(c.category in hidden or c.category in val_gestures for c in split["train_pos"]), \
         "hidden or validation gesture in train_pos"
-    for gestures, part, k in ((hidden, "test_pos", max(shots)), (val_gestures, "val_pos", val_shots)):
-        for g in gestures:
-            for hand in HANDS:
-                n = sum(c.category == g and c.hand == hand for c in split[part])
-                assert n > k, f"{g} {hand}: {n} clips is too few for {k}-shot"
+    # Gestures with too few clips for the larger K are left out of those episodes (evaluate_hidden)
+    for gestures, part, k in ((hidden, "test_pos", min(shots)), (val_gestures, "val_pos", val_shots)):
+        for person in people_in(split[part]):
+            for g in gestures:
+                for hand in HANDS:
+                    n = sum(c.person == person and c.category == g and c.hand == hand for c in split[part])
+                    assert n > k, f"{person} {g} {hand}: {n} clips is too few for {k}-shot"
+    if test_person is not None:
+        check_held_out(split, test_person)
     rank = {"train_neg": 0, "val_neg": 1, "test_neg": 2}
     by_group = {}
     for part in rank:
         for c in split[part]:
-            by_group.setdefault((c.category, c.hand), []).append((c.path, rank[part]))
+            by_group.setdefault((c.person, c.category, c.hand), []).append((c.path, rank[part]))
     for items in by_group.values():
         ranks = [r for _, r in sorted(items)]
         assert ranks == sorted(ranks), "negatives are not split by time"
@@ -308,8 +346,17 @@ def cutoff_rules(true, nearest, dist, labels):
     return rules, float(curve[best])
 
 
-def clips_by_gesture(split_part, gestures, hand):
-    return [[c for c in split_part if c.category == g and c.hand == hand] for g in gestures]
+def clips_by_gesture(split_part, gestures, person, hand):
+    return [[c for c in split_part if c.person == person and c.category == g and c.hand == hand]
+            for g in gestures]
+
+
+def episode_negatives(emb, negative_clips, person, hand):
+    """The person's own negative clips for this hand. A person who recorded none gets everyone
+    else's, so false triggers still count, but they are measured on other people's hands."""
+    own = [c for c in negative_clips if c.person == person and c.hand == hand]
+    chosen = own or [c for c in negative_clips if c.hand == hand]
+    return np.concatenate([emb[c.path] for c in chosen])
 
 
 def draw_support(rng, by_gesture, k):
@@ -333,22 +380,23 @@ def build_episode(emb, by_gesture, negatives, support):
 
 def validate(model, split, val_gestures, rng_key):
     """Pick the cutoffs on the validation gestures, with episodes built like the test ones:
-    per hand, each gesture is taught from 1 random clip, and its other clips plus the
+    per person and hand, each gesture is taught from 1 random clip, and its other clips plus the
     validation negatives are queries. The same episodes are used at every epoch.
     Returns the cutoff of every rule and the best validation macro-F1."""
     rng = np.random.default_rng(rng_key)
     emb = {c.path: embed(model, c.frames) for c in split["val_pos"] + split["val_neg"]}
     true, nearest, dist = [], [], []
-    for hand in HANDS:
-        by_gesture = clips_by_gesture(split["val_pos"], val_gestures, hand)
-        negatives = np.concatenate([emb[c.path] for c in split["val_neg"] if c.hand == hand])
-        for _ in range(val_episodes):
-            prototypes, queries, q_true = build_episode(emb, by_gesture, negatives,
-                                                        draw_support(rng, by_gesture, val_shots))
-            n, d = nearest_prototype(queries, prototypes)
-            true.append(q_true)
-            nearest.append(n)
-            dist.append(d)
+    for person in people_in(split["val_pos"]):
+        for hand in HANDS:
+            by_gesture = clips_by_gesture(split["val_pos"], val_gestures, person, hand)
+            negatives = episode_negatives(emb, split["val_neg"], person, hand)
+            for _ in range(val_episodes):
+                prototypes, queries, q_true = build_episode(emb, by_gesture, negatives,
+                                                            draw_support(rng, by_gesture, val_shots))
+                n, d = nearest_prototype(queries, prototypes)
+                true.append(q_true)
+                nearest.append(n)
+                dist.append(d)
     return cutoff_rules(np.concatenate(true), np.concatenate(nearest), np.concatenate(dist),
                         range(len(val_gestures)))
 
@@ -371,30 +419,36 @@ def score_episode(true, nearest, dist, cutoff, labels, zero_dist, oracle_f1):
 
 
 def evaluate_hidden(model, split, hidden, cutoffs, rng_key):
-    """Teach each hidden gesture from K random clips (per hand), then score every other clip
-    of the hidden gestures plus the test negatives, once per cutoff rule. Repeated over random
-    choices of K clips; every rule is scored on the same episodes."""
+    """Per person and hand, teach each hidden gesture from K random clips of that person, then
+    score every other clip of the hidden gestures plus the test negatives, once per cutoff rule.
+    Repeated over random choices of K clips; every rule is scored on the same episodes. A gesture
+    with K or fewer clips for a person and hand is left out of that person's K-shot episodes,
+    since no clip would be left to score."""
     rng = np.random.default_rng(rng_key)
     emb = {c.path: embed(model, c.frames) for c in split["test_pos"] + split["test_neg"]}
     zero_emb = embed(model, np.zeros((1, input_dim), dtype=np.float32))
-    labels = list(range(len(hidden)))
     results = {rule: {} for rule in cutoffs}
-    for hand in HANDS:
-        by_gesture = clips_by_gesture(split["test_pos"], hidden, hand)
-        negatives = np.concatenate([emb[c.path] for c in split["test_neg"] if c.hand == hand])
-        for k in shots:
-            rows = {rule: [] for rule in cutoffs}
-            for _ in range(episodes):
-                prototypes, queries, true = build_episode(emb, by_gesture, negatives, draw_support(rng, by_gesture, k))
-                nearest, dist = nearest_prototype(queries, prototypes)
-                zero_dist = nearest_prototype(zero_emb, prototypes)[1][0]
-                oracle_f1 = choose_cutoff(true, nearest, dist, labels)[1]
-                for rule, cutoff in cutoffs.items():
-                    rows[rule].append(score_episode(true, nearest, dist, cutoff, labels, zero_dist, oracle_f1))
-            for rule, rule_rows in rows.items():
-                summary = {key: float(np.mean([r[key] for r in rule_rows])) for key in rule_rows[0] if key != "per_gesture_f1"}
-                summary["per_gesture_f1"] = dict(zip(hidden, np.mean([r["per_gesture_f1"] for r in rule_rows], axis=0).tolist()))
-                results[rule][f"{hand}_{k}shot"] = summary
+    for person in people_in(split["test_pos"]):
+        for hand in HANDS:
+            negatives = episode_negatives(emb, split["test_neg"], person, hand)
+            for k in shots:
+                taught = [g for g, clips in zip(hidden, clips_by_gesture(split["test_pos"], hidden, person, hand))
+                          if len(clips) > k]
+                assert taught, f"{person} {hand}: no gesture has enough clips for {k}-shot"
+                by_gesture = clips_by_gesture(split["test_pos"], taught, person, hand)
+                labels = list(range(len(taught)))
+                rows = {rule: [] for rule in cutoffs}
+                for _ in range(episodes):
+                    prototypes, queries, true = build_episode(emb, by_gesture, negatives, draw_support(rng, by_gesture, k))
+                    nearest, dist = nearest_prototype(queries, prototypes)
+                    zero_dist = nearest_prototype(zero_emb, prototypes)[1][0]
+                    oracle_f1 = choose_cutoff(true, nearest, dist, labels)[1]
+                    for rule, cutoff in cutoffs.items():
+                        rows[rule].append(score_episode(true, nearest, dist, cutoff, labels, zero_dist, oracle_f1))
+                for rule, rule_rows in rows.items():
+                    summary = {key: float(np.mean([r[key] for r in rule_rows])) for key in rule_rows[0] if key != "per_gesture_f1"}
+                    summary["per_gesture_f1"] = dict(zip(taught, np.mean([r["per_gesture_f1"] for r in rule_rows], axis=0).tolist()))
+                    results[rule][f"{person}_{hand}_{k}shot"] = summary
     return results
 
 
@@ -529,8 +583,8 @@ def run_folds(clips, gestures, args, seed):
     folds = make_folds(gestures, seed)
     for fold, (hidden, val_gestures) in enumerate(folds):
         print(f"\n=== Seed {seed}, fold {fold + 1}/{len(folds)}: hidden {hidden}, validation {val_gestures} ===")
-        split = split_clips(clips, hidden, val_gestures)
-        check_split(split, hidden, val_gestures)
+        split = split_clips(clips, hidden, val_gestures, test_person=args.test_person)
+        check_split(split, hidden, val_gestures, args.test_person)
         train_gestures = [g for g in gestures if g not in hidden and g not in val_gestures]
         print("  clips: " + ", ".join(f"{part} {len(part_clips)}" for part, part_clips in split.items()))
 
@@ -547,10 +601,36 @@ def run_folds(clips, gestures, args, seed):
                                  "baseline_cutoffs": b_cutoffs, "baseline_val_f1": b_val_f1})
         for rule in CUTOFF_RULES:
             b, m = results["baseline"][-1][rule], results["model"][-1][rule]
-            print(f"  {rule:18s} hidden-gesture F1 (1-shot, left/right): baseline "
-                  f"{b['left_1shot']['f1']:.3f}/{b['right_1shot']['f1']:.3f}  "
-                  f"model {m['left_1shot']['f1']:.3f}/{m['right_1shot']['f1']:.3f}")
+            print(f"  {rule:18s} hidden-gesture F1 (1-shot, left/right):" + "".join(
+                f"  {p}: baseline {b[f'{p}_left_1shot']['f1']:.3f}/{b[f'{p}_right_1shot']['f1']:.3f}"
+                f" model {m[f'{p}_left_1shot']['f1']:.3f}/{m[f'{p}_right_1shot']['f1']:.3f}"
+                for p in people_in(split["test_pos"])))
+    if args.test_person:
+        results["known_baseline"], results["known_model"] = known_gesture_test(clips, gestures, args, seed, results["folds"])
     return results
+
+
+def known_gesture_test(clips, gestures, args, seed, folds):
+    """New hands, gestures the model trained on: train on every gesture of everyone except the
+    test person, then teach all gestures from the test person's own K clips and score the rest.
+    No validation gestures are left, so the epochs and cutoffs are the medians the folds chose,
+    as for the final model."""
+    person = args.test_person
+    print(f"\n=== Seed {seed}: all {len(gestures)} gestures known, tested on {person} ===")
+    split = split_clips([c for c in clips if c.person != person], hidden=(), val_gestures=())
+    check_split(split, hidden=(), val_gestures=())
+    # Validation negatives are not needed here; the newest 20% stay held out for testing
+    split["train_neg"], split["val_neg"] = split["train_neg"] + split["val_neg"], []
+    split["test_pos"] = [c for c in clips if c.person == person and c.kind == "positive"]
+    split["test_neg"] += [c for c in clips if c.person == person and c.kind == "negative"]
+    check_held_out(split, person)
+    epochs = int(round(np.median([f["best_epoch"] for f in folds])))
+    b_cutoffs = {rule: float(np.median([f["baseline_cutoffs"][rule] for f in folds])) for rule in CUTOFF_RULES}
+    m_cutoffs = {rule: float(np.median([f["model_cutoffs"][rule] for f in folds])) for rule in CUTOFF_RULES}
+    test_key = [seed, 998, RNG_TEST]
+    baseline = evaluate_hidden(RawFeatures(*fit_normalization(split)), split, gestures, b_cutoffs, test_key)
+    model, *_ = train_model(split, gestures, (), args, seed, fold=998, epochs=epochs)
+    return [baseline], [evaluate_hidden(model, split, gestures, m_cutoffs, test_key)]
 
 
 # ---------------------------------------------------------------- reporting
@@ -588,7 +668,7 @@ def per_gesture_table(runs, name, rule):
 def print_table(title, tables, n_seeds):
     print(f"\n{title}  (mean over folds" + ("; ± = std over seeds)" if n_seeds > 1 else ")"))
     header = ["F1", "worst fold F1", "accuracy", "closed-set acc", "false triggers", "oracle F1", "zeros rejected"]
-    print(f"  {'cutoff rule':18s} {'setting':12s} " + " ".join(f"{h:>15s}" for h in header))
+    print(f"  {'cutoff rule':18s} {'setting':18s} " + " ".join(f"{h:>15s}" for h in header))
 
     def cell(m):
         return f"{m['mean']:.3f} ± {m['seed_std']:.3f}" if n_seeds > 1 else f"{m['mean']:.3f}"
@@ -596,7 +676,18 @@ def print_table(title, tables, n_seeds):
     for rule, table in tables.items():
         for setting, m in table.items():
             cells = [cell(m["f1"]), f"{m['f1']['worst_fold']:.3f}"] + [cell(m[k]) for k in METRICS[1:]]
-            print(f"  {rule:18s} {setting:12s} " + " ".join(f"{c:>15s}" for c in cells))
+            print(f"  {rule:18s} {setting:18s} " + " ".join(f"{c:>15s}" for c in cells))
+
+
+def print_per_gesture(title, gesture_f1, names, rule, gestures):
+    """1-shot F1 per gesture, left / right, for each person (baseline -> model)."""
+    b, m = gesture_f1[names[0]][rule], gesture_f1[names[1]][rule]
+    print(f"\n{title}, 1-shot, left / right, cutoff rule {rule} (baseline -> model):")
+    for person in sorted({setting.rsplit("_", 2)[0] for setting in m}):
+        print(f"  {person}")
+        for g in gestures:
+            row = [d[f"{person}_{hand}_1shot"].get(g, float("nan")) for d in (b, m) for hand in HANDS]
+            print(f"    {g:14s} {row[0]:.3f} / {row[1]:.3f}  ->  {row[2]:.3f} / {row[3]:.3f}")
 
 
 # ---------------------------------------------------------------- final model and ONNX
@@ -671,6 +762,7 @@ def main():
     parser.add_argument("--seeds", type=int, nargs="+", default=[0])
     parser.add_argument("--cutoff-rule", choices=CUTOFF_RULES, default="best_f1",
                         help="rule for the per-gesture table and the exported cutoff (all rules are scored)")
+    parser.add_argument("--test-person", help="never train on this person's clips; score on them as new hands")
     args = parser.parse_args()
     assert args.epochs >= 1
 
@@ -678,25 +770,43 @@ def main():
     gestures = sorted({c.category for c in clips if c.kind == "positive"})
     n_pos = sum(c.kind == "positive" for c in clips)
     print(f"Loaded {len(clips)} clips ({n_pos} gesture, {len(clips) - n_pos} negative), {len(gestures)} gestures")
+    for person in people_in(clips):
+        n = Counter(c.kind for c in clips if c.person == person)
+        print(f"  {person}: {n['positive']} gesture, {n['negative']} negative"
+              + ("  (no negatives: scored against everyone else's)" if not n["negative"] else ""))
+    counts = Counter((c.person, c.category, c.hand) for c in clips if c.kind == "positive")
+    for (person, g, hand), n in sorted(counts.items()):
+        if n <= max(shots):
+            print(f"  {person} {g} {hand}: only {n} clips, left out of {max(shots)}-shot episodes")
+    if args.test_person:
+        assert args.test_person in people_in(clips), f"no data folder for {args.test_person}"
+        assert not args.final, "the shipped model must train on everyone; drop --test-person for --final"
+        assert any(c.kind == "negative" and c.person != args.test_person for c in clips), \
+            "training needs negatives from someone other than the test person"
 
     start = time.time()
     runs = [run_folds(clips, gestures, args, seed) for seed in args.seeds]
 
     names = ("baseline", "model")
+    if args.test_person:
+        names += ("known_baseline", "known_model")
     summary = {name: {rule: summarize(runs, name, rule) for rule in CUTOFF_RULES} for name in names}
     gesture_f1 = {name: {rule: per_gesture_table(runs, name, rule) for rule in CUTOFF_RULES} for name in names}
     print_table("Raw-feature baseline (no training)", summary["baseline"], len(args.seeds))
     print_table("Siamese model", summary["model"], len(args.seeds))
-    print(f"\nPer-gesture F1, 1-shot, left / right, cutoff rule {args.cutoff_rule} (baseline -> model):")
-    for g in gestures:
-        b, m = gesture_f1["baseline"][args.cutoff_rule], gesture_f1["model"][args.cutoff_rule]
-        print(f"  {g:14s} {b['left_1shot'][g]:.3f} / {b['right_1shot'][g]:.3f}  ->  "
-              f"{m['left_1shot'][g]:.3f} / {m['right_1shot'][g]:.3f}")
+    print_per_gesture("Per-gesture F1 on hidden gestures", gesture_f1, names[:2], args.cutoff_rule, gestures)
+    if args.test_person:
+        title = f"{args.test_person} as a new person, all {len(gestures)} gestures known"
+        print_table(f"{title}: raw-feature baseline", summary["known_baseline"], len(args.seeds))
+        print_table(f"{title}: Siamese model", summary["known_model"], len(args.seeds))
+        print_per_gesture(f"Per-gesture F1, {title}", gesture_f1, names[2:], args.cutoff_rule, gestures)
     print(f"\nFolds took {time.time() - start:.0f} s")
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     tag = "model" + ("_augment" if args.augment else "") + ("_nearmiss" if args.near_miss else "")
     tag += f"_epochs{args.epochs}_seeds" + "-".join(map(str, args.seeds))
+    if args.test_person:
+        tag += f"_test-{args.test_person}"
     with open(os.path.join(OUTPUT_DIR, f"results_{tag}.json"), "w") as f:
         json.dump({"args": vars(args), "summary": summary, "per_gesture_f1": gesture_f1, "runs": runs}, f, indent=2)
 

@@ -36,36 +36,36 @@
   "input": "raw features, shape [batch, 17] (z-scoring is inside the model)",
   "output": "L2-normalised embedding, shape [batch, 16]",
   "embedding_dim": 16,
-  "no_gesture_cutoff": 0.5694765448570251,
+  "no_gesture_cutoff": 0.5809234380722046,
   "cutoff_rule": "f1_plateau_middle",
   "cutoffs_by_rule": {
-    "best_f1": 0.4446057975292206,
-    "f1_plateau_middle": 0.5694765448570251,
-    "false_trigger_1pct": 0.458280086517334,
-    "false_trigger_5pct": 0.7949419021606445
+    "best_f1": 0.514313817024231,
+    "f1_plateau_middle": 0.5809234380722046,
+    "false_trigger_1pct": 0.4297623932361603,
+    "false_trigger_5pct": 0.7734126448631287
   },
   "fold_cutoff_range_by_rule": {
     "best_f1": [
-      0.21112379431724548,
-      0.8279262781143188
+      0.25378283858299255,
+      0.8343929052352905
     ],
     "f1_plateau_middle": [
-      0.24521832168102264,
-      0.7966914176940918
+      0.2702348232269287,
+      0.8351407051086426
     ],
     "false_trigger_1pct": [
-      0.13376079499721527,
-      0.8631384372711182
+      0.16988590359687805,
+      0.7820084095001221
     ],
     "false_trigger_5pct": [
-      0.23373299837112427,
-      1.294590711593628
+      0.26079121232032776,
+      1.124044418334961
     ]
   },
   "cutoff_meaning": "distance to the nearest prototype > cutoff means no gesture",
   "cutoff_source": "median of the cutoffs chosen on validation gestures in cross-validation; provisional, not measured on this model",
-  "epochs": 1,
-  "onnx_max_diff": 2.384185791015625e-07,
+  "epochs": 2,
+  "onnx_max_diff": 2.2351741790771484e-07,
   "onnx_opset": 12,
   "args": {
     "augment": false,
@@ -77,6 +77,7 @@
       1,
       2
     ],
-    "cutoff_rule": "f1_plateau_middle"
+    "cutoff_rule": "f1_plateau_middle",
+    "test_person": null
   }
 }

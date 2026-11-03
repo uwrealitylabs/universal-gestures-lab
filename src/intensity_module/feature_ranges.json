@@ -4,7 +4,7 @@
   "lookback_s": 1.5,
   "curve": {
     "knee": 0.25,
-    "power": 8.0
+    "power": 3.0
   },
   "gates": {
     "angle_degrees": 12.4511,

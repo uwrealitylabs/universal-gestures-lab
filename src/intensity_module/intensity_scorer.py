@@ -86,10 +86,9 @@ W = {"angular_speed": 0.5, "angular_peak_speed": 0.5, "angular_accel": 0.0, "opp
 assert abs(sum(W.values()) - 1.0) < 1e-9
 # Scores below CURVE_KNEE are lowered to knee * (score / knee) ** CURVE_POWER; scores at or
 # above it are unchanged. It keeps 0, the order of scores, and everything from normal effort
-# up, and pushes gentle movement towards 0, since level 1 must average at most 0.15. The power
-# was chosen so the testing finger gun level 1 averages about 0.15.
+# up, and pushes gentle movement towards 0, since level 1 must average at most 0.15.
 CURVE_KNEE = 0.25
-CURVE_POWER = 8.0
+CURVE_POWER = 3.0
 CALIBRATION_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feature_ranges.json")
 
 

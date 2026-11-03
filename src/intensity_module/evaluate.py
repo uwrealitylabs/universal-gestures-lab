@@ -79,9 +79,9 @@ def check(clips):
         if missing:
             failures.append(f"{g} has no level {', '.join(missing)} clips")
         if by_level["4"] and np.mean(by_level["4"]) < LEVEL4_MIN:
-            failures.append(f"{g} level 4 averages {np.mean(by_level['4']):.2f} (target >= {LEVEL4_MIN})")
+            failures.append(f"{g} level 4 averages {np.mean(by_level['4']):.3f} (target >= {LEVEL4_MIN})")
         if by_level["1"] and np.mean(by_level["1"]) > LEVEL1_MAX:
-            failures.append(f"{g} level 1 averages {np.mean(by_level['1']):.2f} (target <= {LEVEL1_MAX})")
+            failures.append(f"{g} level 1 averages {np.mean(by_level['1']):.3f} (target <= {LEVEL1_MAX})")
         for lo, w in zip(LEVELS, wins):
             if w is not None and w < ADJACENT_WIN_MIN:
                 failures.append(f"{g} level {int(lo) + 1} beats level {lo} {w:.2f} of the time (target >= {ADJACENT_WIN_MIN})")

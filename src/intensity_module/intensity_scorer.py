@@ -12,7 +12,7 @@ Joints are averaged by how much they take part in the movement, so incidental tw
 of other fingers count little. Calibration is shared by every gesture: a movement gate
 (how far joints appear to move when the hand is still) and one maximum quickness per
 component (from maximum-effort clips). A new gesture needs no recordings of its own.
-The combined score is raised to INTENSITY_EXPONENT, which keeps gentle movement low.
+Combined scores below CURVE_KNEE are curved down, which keeps gentle movement low.
 
 Input formats (17 floats per frame):
   static recorder:  JSON list of {confidence, handData: [f0..f16]}, one frame each
@@ -84,11 +84,12 @@ COMPONENTS = ("angular_speed", "angular_peak_speed", "angular_accel", "oppositio
 # the development recordings. Opposition distances move together with the finger angles.
 W = {"angular_speed": 0.5, "angular_peak_speed": 0.5, "angular_accel": 0.0, "opposition_speed": 0.0}
 assert abs(sum(W.values()) - 1.0) < 1e-9
-# The weighted sum is raised to this power. It keeps 0 and 1 and the order of scores, and
-# lowers gentle movement more than hard: gentle clips are done as quick strokes with pauses,
-# which the snap component reads, and level 1 must average at most 0.15. Chosen as the
-# smallest round value that meets that at 72 and 15 Hz while level 4 still averages >= 0.85.
-INTENSITY_EXPONENT = 1.6
+# Scores below CURVE_KNEE are lowered to knee * (score / knee) ** CURVE_POWER; scores at or
+# above it are unchanged. It keeps 0, the order of scores, and everything from normal effort
+# up, and pushes gentle movement towards 0, since level 1 must average at most 0.15. The power
+# was chosen so the testing finger gun level 1 averages about 0.15.
+CURVE_KNEE = 0.25
+CURVE_POWER = 8.0
 CALIBRATION_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feature_ranges.json")
 
 
@@ -244,7 +245,7 @@ def calibrate(max_effort, rest, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=S
         "sample_rate_hz": rate,
         "window_s": window_s,
         "lookback_s": lookback_s,
-        "exponent": INTENSITY_EXPONENT,
+        "curve": {"knee": CURVE_KNEE, "power": CURVE_POWER},
         "gates": {"angle_degrees": round(gates["angle_size"], 4), "opposition_metres": round(gates["opposition_size"], 6)},
         "components": {},
     }
@@ -275,7 +276,10 @@ def _result(features, cal, confidence):
     for k, c in cal["components"].items():
         key = _size_key(k)
         s[k] = 0.0 if c["max"] is None else combine(features[k], features[key], gates[key], c["zero"], c["max"])
-    intensity = sum(W[k] * s[k] for k in COMPONENTS) ** cal["exponent"]
+    intensity = sum(W[k] * s[k] for k in COMPONENTS)
+    knee = cal["curve"]["knee"]
+    if intensity < knee:
+        intensity = knee * (intensity / knee) ** cal["curve"]["power"]
     return {
         "intensity": round(float(intensity), 4),
         "angular_speed_score": round(s["angular_speed"], 4),

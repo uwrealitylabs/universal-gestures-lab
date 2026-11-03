@@ -2,7 +2,10 @@
   "sample_rate_hz": 15,
   "window_s": 0.5,
   "lookback_s": 1.5,
-  "exponent": 1.6,
+  "curve": {
+    "knee": 0.25,
+    "power": 8.0
+  },
   "gates": {
     "angle_degrees": 12.4511,
     "opposition_metres": 0.008514

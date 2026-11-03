@@ -1,6 +1,0 @@
-intensity_module/
-  intensity_scorer.py   # scorer: load, resample to 15 Hz, size-independent quickness, calibrate and score commands
-  feature_ranges.json   # saved calibration: movement gates and maximum quickness from development recordings
-  evaluate.py           # scores the held-out testing recordings against the intensity targets
-  test_scorer.py        # unit tests: python -m unittest test_scorer
-  recordings/           # development (calibration) and testing (evaluation) batches; see recordings/README.md

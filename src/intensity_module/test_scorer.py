@@ -5,6 +5,7 @@ import unittest
 
 import numpy as np
 
+from evaluate import check
 from intensity_scorer import (
     ABDUCTION_IDX,
     ANGLE_IDX,
@@ -216,8 +217,22 @@ class ScoreTests(unittest.TestCase):
     def test_recording_is_scored_every_half_second(self):
         results = score_recording(oscillate(THUMB, 25.0, 2.0, seconds=10.0), 72.0, self.cal)
 
-        self.assertEqual(len(results), 18)
+        # 149 steps at 15 Hz: 18 full windows of 8 steps, plus one aligned to the end.
+        self.assertEqual(len(results), 19)
         self.assertEqual(results[1]["start_s"], round(8 / 15, 3))
+        self.assertEqual(results[-1]["start_s"], round((149 - 8) / 15, 3))
+
+    def test_flick_in_the_trailing_partial_window_is_scored(self):
+        # 15 frames at 15 Hz: one full window of 8 steps, then a flick in the remaining 6.
+        frames = np.full((15, 17), 90.0)
+        frames[:, OPPOSITION_IDX] = 0.05
+        frames[9:, 0] += [0.0, 40.0, 80.0, 80.0, 40.0, 0.0]
+
+        results = score_recording(frames, 15.0, self.cal)
+
+        self.assertEqual(len(results), 2)
+        self.assertGreater(results[-1]["intensity"], 0.5)
+        self.assertEqual(results[-1]["intensity"], score(frames, 15.0, self.cal)["intensity"])
 
 
 class CalibrationTests(unittest.TestCase):
@@ -238,6 +253,56 @@ class CalibrationTests(unittest.TestCase):
         self.assertLess(cal["gates"]["angle_degrees"], 5)
         self.assertGreater(cal["components"]["angular_speed"]["max"], cal["components"]["angular_speed"]["zero"])
         self.assertIsNone(cal["components"]["opposition_speed"]["max"])  # the synthetic hand never moves it
+
+
+def clip(gesture, condition, level, intensity):
+    return {"gesture": gesture, "condition": condition, "level": level,
+            "file": f"{gesture}_{condition}{level}.json", "intensity": intensity}
+
+
+def passing_clips():
+    return [clip("fist", "level", lv, s) for lv, s in (("1", [0.1]), ("2", [0.4]), ("3", [0.6]), ("4", [0.95]))] + [
+        clip("none", "still", "", [0.0]),
+        clip("fist", "wrist_only", "", [0.01]),
+    ]
+
+
+class EvaluateTests(unittest.TestCase):
+    def test_complete_passing_set_has_no_failures(self):
+        self.assertEqual(check(passing_clips()), [])
+
+    def test_clip_with_no_scores_fails(self):
+        clips = passing_clips()
+        clips[1]["intensity"] = []
+
+        self.assertIn("fist_level2.json produced no scores", check(clips))
+
+    def test_empty_control_fails(self):
+        clips = passing_clips()
+        clips[4]["intensity"] = []
+
+        self.assertIn("none_still.json produced no scores", check(clips))
+
+    def test_non_finite_scores_fail(self):
+        clips = passing_clips()
+        clips[5]["intensity"] = [float("nan")]
+
+        self.assertIn("fist_wrist_only.json produced non-finite scores", check(clips))
+
+    def test_missing_level_fails(self):
+        clips = [c for c in passing_clips() if c["level"] != "4"]
+
+        self.assertIn("fist has no level 4 clips", check(clips))
+
+    def test_missing_controls_fail(self):
+        clips = [c for c in passing_clips() if c["condition"] == "level"]
+
+        self.assertEqual(check(clips), ["no still clips", "no wrist_only clips"])
+
+    def test_no_level_clips_fails(self):
+        clips = [c for c in passing_clips() if c["condition"] != "level"]
+
+        self.assertIn("no level clips", check(clips))
 
 
 if __name__ == "__main__":

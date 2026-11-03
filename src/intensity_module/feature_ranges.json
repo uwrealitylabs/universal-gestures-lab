@@ -2,9 +2,10 @@
   "sample_rate_hz": 15,
   "window_s": 0.5,
   "lookback_s": 1.5,
+  "exponent": 1.6,
   "gates": {
-    "angle_degrees": 12.7232,
-    "opposition_metres": 0.008694
+    "angle_degrees": 12.4511,
+    "opposition_metres": 0.008514
   },
   "components": {
     "angular_speed": {
@@ -17,7 +18,7 @@
     },
     "angular_accel": {
       "zero": 0.0,
-      "max": 12.253244
+      "max": 12.256868
     },
     "opposition_speed": {
       "zero": 0.666667,

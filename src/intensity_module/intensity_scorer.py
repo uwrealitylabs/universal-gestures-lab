@@ -12,6 +12,7 @@ Joints are averaged by how much they take part in the movement, so incidental tw
 of other fingers count little. Calibration is shared by every gesture: a movement gate
 (how far joints appear to move when the hand is still) and one maximum quickness per
 component (from maximum-effort clips). A new gesture needs no recordings of its own.
+The combined score is raised to INTENSITY_EXPONENT, which keeps gentle movement low.
 
 Input formats (17 floats per frame):
   static recorder:  JSON list of {confidence, handData: [f0..f16]}, one frame each
@@ -83,6 +84,11 @@ COMPONENTS = ("angular_speed", "angular_peak_speed", "angular_accel", "oppositio
 # the development recordings. Opposition distances move together with the finger angles.
 W = {"angular_speed": 0.5, "angular_peak_speed": 0.5, "angular_accel": 0.0, "opposition_speed": 0.0}
 assert abs(sum(W.values()) - 1.0) < 1e-9
+# The weighted sum is raised to this power. It keeps 0 and 1 and the order of scores, and
+# lowers gentle movement more than hard: gentle clips are done as quick strokes with pauses,
+# which the snap component reads, and level 1 must average at most 0.15. Chosen as the
+# smallest round value that meets that at 72 and 15 Hz while level 4 still averages >= 0.85.
+INTENSITY_EXPONENT = 1.6
 CALIBRATION_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feature_ranges.json")
 
 
@@ -170,17 +176,24 @@ def window_features(lookback, angular, opposition, rate=SAMPLE_RATE_HZ):
 
 
 def windows(frames, fps, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=SAMPLE_RATE_HZ):
-    """Return [(start_s, features), ...] for consecutive windows; a short input is one window."""
+    """Return [(start_s, features), ...] for consecutive windows; a short input is one window.
+
+    When the steps do not divide evenly, a last window is aligned to the end of the input,
+    overlapping the one before it, so the final movement is scored as score() would score it.
+    """
     samples = resample(repair_glitches(frames, fps), fps, rate)
     angular, opposition = step_speeds(samples, rate)
     if len(angular) == 0:
         return []
     n = min(max(2, int(round(window_s * rate))), len(angular))
     back = max(n, int(round(lookback_s * rate)))
+    ends = list(range(n, len(angular) + 1, n))
+    if ends[-1] != len(angular):
+        ends.append(len(angular))
     return [
         ((end - n) / rate,
          window_features(samples[max(0, end - back):end + 1], angular[end - n:end], opposition[end - n:end], rate))
-        for end in range(n, len(angular) + 1, n)
+        for end in ends
     ]
 
 
@@ -231,6 +244,7 @@ def calibrate(max_effort, rest, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=S
         "sample_rate_hz": rate,
         "window_s": window_s,
         "lookback_s": lookback_s,
+        "exponent": INTENSITY_EXPONENT,
         "gates": {"angle_degrees": round(gates["angle_size"], 4), "opposition_metres": round(gates["opposition_size"], 6)},
         "components": {},
     }
@@ -261,7 +275,7 @@ def _result(features, cal, confidence):
     for k, c in cal["components"].items():
         key = _size_key(k)
         s[k] = 0.0 if c["max"] is None else combine(features[k], features[key], gates[key], c["zero"], c["max"])
-    intensity = sum(W[k] * s[k] for k in COMPONENTS)
+    intensity = sum(W[k] * s[k] for k in COMPONENTS) ** cal["exponent"]
     return {
         "intensity": round(float(intensity), 4),
         "angular_speed_score": round(s["angular_speed"], 4),

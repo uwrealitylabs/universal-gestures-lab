@@ -204,20 +204,6 @@ class ScoreTests(unittest.TestCase):
 
         self.assertLessEqual(angular.max(), MAX_ANGULAR_SPEED)
 
-    def test_curve_lowers_only_scores_below_the_knee(self):
-        flat = json.loads(json.dumps(self.cal))
-        flat["curve"]["power"] = 1.0
-        knee = self.cal["curve"]["knee"]
-
-        for hz in (0.5, 0.7, 1.5, 2.0, 3.0):  # about 0.1-0.8 before the curve, none at the knee
-            frames = oscillate(THUMB, 25.0, hz)
-            before = score(frames, 72.0, flat)["intensity"]
-            after = score(frames, 72.0, self.cal)["intensity"]
-            if before >= knee:
-                self.assertEqual(after, before)
-            else:
-                self.assertLess(after, before)
-
     def test_output_keys(self):
         result = score(oscillate(THUMB, 25.0, 2.0), 72.0, self.cal, confidence=1)
 

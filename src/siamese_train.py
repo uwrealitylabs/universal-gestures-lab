@@ -148,8 +148,11 @@ def make_folds(gestures, seed):
     """Balanced folds: with the gestures in a random order, fold i hides gestures i..i+2 and
     holds out i+3..i+4 for validation (wrapping around). Every gesture is hidden exactly
     3 times and used for validation exactly 2 times."""
-    order = [str(g) for g in np.random.default_rng(seed).permutation(gestures)]
     per_fold = hidden_per_fold + val_gestures_per_fold
+    if len(gestures) <= per_fold:
+        raise ValueError(f"need at least {per_fold + 1} gestures ({hidden_per_fold} hidden, "
+                         f"{val_gestures_per_fold} validation, 1+ to train on), found {len(gestures)}")
+    order = [str(g) for g in np.random.default_rng(seed).permutation(gestures)]
     folds = []
     for i in range(len(order)):
         picked = [order[(i + j) % len(order)] for j in range(per_fold)]
@@ -300,10 +303,28 @@ def macro_f1_curve(true, nearest, dist, labels, cutoffs):
     return np.mean(per_label, axis=0)
 
 
+REJECT_ALL = -1.0  # below every distance (distances are >= 0), so nothing fires
+
+
+def cutoffs_between(lower, upper):
+    """A cutoff between each lower < upper that fires on `lower` but not on `upper` (predict
+    fires on dist <= cutoff): halfway, kept in the distances' float type. For adjacent floats
+    halfway can round up to `upper`, and then `lower` itself is the cutoff."""
+    halfway = (lower + upper) / 2
+    return np.where(halfway < upper, halfway, lower)
+
+
+def cutoff_below_all(smallest):
+    """A cutoff no distance fires on: half the smallest distance, or REJECT_ALL if that is 0."""
+    return smallest / 2 if smallest > 0 else REJECT_ALL
+
+
 def candidate_cutoffs(dist):
-    """Midpoints between consecutive distances, plus one below and one above all of them."""
+    """One cutoff below all the distances, one between each pair of consecutive distances and
+    one above all of them, so every number of frames that can fire has a candidate."""
     d = np.unique(dist)
-    return np.concatenate([[d[0] / 2], (d[:-1] + d[1:]) / 2, [d[-1] * 2]])
+    return np.concatenate([np.array([cutoff_below_all(d[0])], dtype=d.dtype),
+                           cutoffs_between(d[:-1], d[1:]), [d[-1] * 2]])
 
 
 def choose_cutoff(true, nearest, dist, labels):
@@ -316,11 +337,18 @@ def choose_cutoff(true, nearest, dist, labels):
 
 def false_trigger_cutoff(negative_dist, rate):
     """Largest cutoff at which at most `rate` of the negative frames fire a gesture. The cutoff
-    sits below the (k+1)-th smallest distance, so frames tied with it do not fire either."""
+    sits strictly below the (k+1)-th smallest distance, so frames tied with it do not fire
+    either. If no distance is below that one (e.g. it is 0), nothing may fire."""
+    if len(negative_dist) == 0:
+        raise ValueError("no negative frames to measure false triggers on")
+    if not 0 <= rate < 1:
+        raise ValueError(f"false-trigger rate must be in [0, 1), got {rate}")
     d = np.sort(negative_dist)
-    k = int(np.floor(rate * len(d)))
+    k = int(np.floor(rate * len(d)))  # at most k frames may fire
     below = d[d < d[k]]
-    return float(d[k] / 2) if len(below) == 0 else float((below[-1] + d[k]) / 2)
+    if len(below) == 0:
+        return float(cutoff_below_all(d[k]))
+    return float(cutoffs_between(below[-1], d[k]))
 
 
 def cutoff_rules(true, nearest, dist, labels):
@@ -356,6 +384,8 @@ def episode_negatives(emb, negative_clips, person, hand):
     else's, so false triggers still count, but they are measured on other people's hands."""
     own = [c for c in negative_clips if c.person == person and c.hand == hand]
     chosen = own or [c for c in negative_clips if c.hand == hand]
+    if not chosen:
+        raise ValueError(f"no {hand}-hand negative clips to score {person}'s episodes against")
     return np.concatenate([emb[c.path] for c in chosen])
 
 
@@ -533,7 +563,12 @@ def train_model(split, train_gestures, val_gestures, args, seed, fold, epochs):
     mean, std = fit_normalization(split)
     model = EmbeddingNet(mean, std)
     pos_clips = [[c for c in split["train_pos"] if c.category == g] for g in train_gestures]
-    assert all(len(clips) >= clips_per_gesture for clips in pos_clips)
+    too_few = {g: len(clips) for g, clips in zip(train_gestures, pos_clips) if len(clips) < clips_per_gesture}
+    if too_few:
+        raise ValueError(f"each training gesture needs at least {clips_per_gesture} clips "
+                         f"(one per batch slot); too few: {too_few}")
+    if not split["train_neg"]:
+        raise ValueError("training needs negative clips, and the training split has none")
     neg_frames = np.concatenate([c.frames for c in split["train_neg"]])
     spread = between_clip_spread(split["train_pos"])
     near_misses = None

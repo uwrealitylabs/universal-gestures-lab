@@ -43,7 +43,7 @@ python intensity_scorer.py calibrate recordings/development/bryan/manifest.csv
 python evaluate.py recordings/testing/bryan/manifest.csv
 
 # Score one clip window by window
-python intensity_scorer.py score recordings/testing/bryan/pinch/pinch_level4_take1_2026-11-03_00-39-00.json --fps 72
+python intensity_scorer.py score recordings/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json --fps 72.1
 
 # Unit tests
 python -m unittest test_scorer

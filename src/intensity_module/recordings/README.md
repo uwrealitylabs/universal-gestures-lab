@@ -21,8 +21,8 @@ movement back to back for the whole clip, except in the single-movement conditio
 Copy clips off the headset from `/sdcard/Android/data/com.bryanwei.universalgestures/files/JsonData/` into:
 
 ```
-recordings/<batch>/<person>/<gesture>/<gesture>_level<1-4>_take<n>_<headset timestamp>.json
-recordings/<batch>/<person>/controls/    still and wrist-only clips
+recordings/continuous/<batch>/<person>/<gesture>/<gesture>_level<1-4>_take<n>_<headset timestamp>.json
+recordings/continuous/<batch>/<person>/controls/    still and wrist-only clips
 recordings/transitions/<batch>/<person>/<gesture>/    transition clips
 ```
 
@@ -39,13 +39,13 @@ From `src/intensity_module/`:
 
 ```bash
 # Build feature_ranges.json from the development level-4, transition, still and wrist-only clips
-python intensity_scorer.py calibrate recordings/development/bryan/manifest.csv recordings/transitions/development/bryan/manifest.csv
+python intensity_scorer.py calibrate recordings/continuous/development/bryan/manifest.csv recordings/transitions/development/bryan/manifest.csv
 
 # Check the testing batch against the targets (add --input-hz 15 to simulate the dynamic recorder)
-python evaluate.py recordings/testing/bryan/manifest.csv recordings/transitions/testing/bryan/manifest.csv
+python evaluate.py recordings/continuous/testing/bryan/manifest.csv recordings/transitions/testing/bryan/manifest.csv
 
 # Score one clip window by window
-python intensity_scorer.py score recordings/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json --fps 72.1
+python intensity_scorer.py score recordings/continuous/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json --fps 72.1
 
 # Unit tests
 python -m unittest test_scorer test_golden_scores

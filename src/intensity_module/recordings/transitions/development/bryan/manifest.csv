@@ -10,5 +10,5 @@ finger_gun/finger_gun_level4_take1_2026-11-04_02-34-15.json,_2026-11-04_02-34-15
 finger_gun/finger_gun_level4_take2_2026-11-04_02-34-33.json,_2026-11-04_02-34-33.json,2026-11-04,finger_gun,transition,4,2,721,72.1,0,max effort from a relaxed hand; added for calibration of full score
 peace_sign/peace_sign_level4_take1_2026-11-04_02-34-49.json,_2026-11-04_02-34-49.json,2026-11-04,peace_sign,transition,4,1,721,72.1,0,max effort from a relaxed hand; added for calibration of full score
 peace_sign/peace_sign_level4_take2_2026-11-04_02-35-04.json,_2026-11-04_02-35-04.json,2026-11-04,peace_sign,transition,4,2,721,72.1,0,max effort from a relaxed hand; added for calibration of full score
-../../../development/bryan/controls/finger_gun_pose_wrist_only_take1_2026-11-02_23-38-20.json,_2026-11-02_23-38-20.json,2026-11-02,finger_gun,wrist_only,,1,632,72.2,1.25,"existing control clip, referenced in place"
-../../../development/bryan/controls/still_take1_2026-11-02_23-52-33.json,_2026-11-02_23-52-33.json,2026-11-02,none,still,,1,721,72.1,0,"existing control clip, referenced in place"
+../../../continuous/development/bryan/controls/finger_gun_pose_wrist_only_take1_2026-11-02_23-38-20.json,_2026-11-02_23-38-20.json,2026-11-02,finger_gun,wrist_only,,1,632,72.2,1.25,"existing control clip, referenced in place"
+../../../continuous/development/bryan/controls/still_take1_2026-11-02_23-52-33.json,_2026-11-02_23-52-33.json,2026-11-02,none,still,,1,721,72.1,0,"existing control clip, referenced in place"

@@ -17,7 +17,7 @@ least one level clip, one still and one wrist-only clip, or the run fails. Clips
 than one manifest are scored once.
 
 Usage:
-  python evaluate.py recordings/testing/bryan/manifest.csv recordings/transitions/testing/bryan/manifest.csv
+  python evaluate.py recordings/continuous/testing/bryan/manifest.csv recordings/transitions/testing/bryan/manifest.csv
   python evaluate.py <same manifests> --input-hz 15   # 15 Hz input, as from the dynamic recorder
 
 Only pass manifests under testing/ folders; development recordings built the calibration.

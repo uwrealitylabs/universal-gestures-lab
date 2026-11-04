@@ -38,7 +38,7 @@
   },
   "source": {
     "manifests": [
-      "recordings/development/bryan/manifest.csv",
+      "recordings/continuous/development/bryan/manifest.csv",
       "recordings/transitions/development/bryan/manifest.csv"
     ],
     "max_effort_clips": [

@@ -23,8 +23,8 @@ from intensity_scorer import load_calibration, load_manifest, score_recording
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOLDEN_PATH = os.path.join(HERE, "golden_scores.json")
 MANIFESTS = (
-    "recordings/development/bryan/manifest.csv",
-    "recordings/testing/bryan/manifest.csv",
+    "recordings/continuous/development/bryan/manifest.csv",
+    "recordings/continuous/testing/bryan/manifest.csv",
 )
 LOCKED = ("start_s", "angular_speed_score", "angular_peak_speed_score", "angular_acceleration_score",
           "opposition_speed_score", "confidence")

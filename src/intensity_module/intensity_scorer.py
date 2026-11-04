@@ -44,7 +44,7 @@ distance in metres. Timing is never assumed: pass the measured frame rate, or pe
 timestamps (read from a recording's "timestamp" / "timestamps" fields when it has them).
 
 Usage:
-  python intensity_scorer.py calibrate recordings/development/bryan/manifest.csv recordings/transitions/development/bryan/manifest.csv
+  python intensity_scorer.py calibrate recordings/continuous/development/bryan/manifest.csv recordings/transitions/development/bryan/manifest.csv
   python intensity_scorer.py score recordings/transitions/testing/bryan/pinch/<clip>.json --fps 72.1 --gesture pinch
 """
 
@@ -792,7 +792,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("calibrate", help="build feature_ranges.json from development recordings")
-    p.add_argument("manifests", nargs="+", help="manifest.csv files under recordings/development/")
+    p.add_argument("manifests", nargs="+", help="development manifest.csv files (continuous and transitions)")
     p.add_argument("--out", default=CALIBRATION_PATH)
     p.set_defaults(func=_calibrate_cli)
     p = sub.add_parser("score", help="score a recording window by window")

@@ -1,5 +1,5 @@
 {
- "recordings/development/bryan/controls/finger_gun_pose_wrist_only_take1_2026-11-02_23-38-20.json": {
+ "recordings/continuous/development/bryan/controls/finger_gun_pose_wrist_only_take1_2026-11-02_23-38-20.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.0,
@@ -685,7 +685,7 @@
    }
   ]
  },
- "recordings/development/bryan/controls/still_take1_2026-11-02_23-52-33.json": {
+ "recordings/continuous/development/bryan/controls/still_take1_2026-11-02_23-52-33.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.0,
@@ -1411,7 +1411,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level1_take1_2026-11-02_23-35-46.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level1_take1_2026-11-02_23-35-46.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.3419,
@@ -2137,7 +2137,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level1_take2_2026-11-02_23-36-01.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level1_take2_2026-11-02_23-36-01.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.4348,
@@ -2863,7 +2863,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level2_take1_2026-11-02_23-36-21.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level2_take1_2026-11-02_23-36-21.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.8869,
@@ -3589,7 +3589,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level2_take2_2026-11-02_23-36-37.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level2_take2_2026-11-02_23-36-37.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.6442,
@@ -4315,7 +4315,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level3_take1_2026-11-02_23-36-56.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level3_take1_2026-11-02_23-36-56.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9988,
@@ -5041,7 +5041,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level3_take2_2026-11-02_23-37-11.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level3_take2_2026-11-02_23-37-11.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9974,
@@ -5767,7 +5767,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level4_take1_2026-11-02_23-37-26.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level4_take1_2026-11-02_23-37-26.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9992,
@@ -6493,7 +6493,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_level4_take2_2026-11-02_23-37-41.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_level4_take2_2026-11-02_23-37-41.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9997,
@@ -7219,7 +7219,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_gun/finger_gun_small_take1_2026-11-02_23-38-03.json": {
+ "recordings/continuous/development/bryan/finger_gun/finger_gun_small_take1_2026-11-02_23-38-03.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.6421,
@@ -7945,7 +7945,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_spread/finger_spread_level4_take1_2026-11-03_00-29-46.json": {
+ "recordings/continuous/development/bryan/finger_spread/finger_spread_level4_take1_2026-11-03_00-29-46.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9965,
@@ -8671,7 +8671,7 @@
    }
   ]
  },
- "recordings/development/bryan/finger_spread/finger_spread_level4_take2_2026-11-03_00-30-01.json": {
+ "recordings/continuous/development/bryan/finger_spread/finger_spread_level4_take2_2026-11-03_00-30-01.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9817,
@@ -9397,7 +9397,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level1_take1_2026-11-02_23-38-59.json": {
+ "recordings/continuous/development/bryan/fist/fist_level1_take1_2026-11-02_23-38-59.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.6942,
@@ -10123,7 +10123,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level1_take2_2026-11-02_23-39-15.json": {
+ "recordings/continuous/development/bryan/fist/fist_level1_take2_2026-11-02_23-39-15.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.6947,
@@ -10849,7 +10849,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level2_take1_2026-11-02_23-39-37.json": {
+ "recordings/continuous/development/bryan/fist/fist_level2_take1_2026-11-02_23-39-37.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.7332,
@@ -11575,7 +11575,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level2_take2_2026-11-02_23-39-52.json": {
+ "recordings/continuous/development/bryan/fist/fist_level2_take2_2026-11-02_23-39-52.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.685,
@@ -12301,7 +12301,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level3_take1_2026-11-02_23-40-07.json": {
+ "recordings/continuous/development/bryan/fist/fist_level3_take1_2026-11-02_23-40-07.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.8983,
@@ -13027,7 +13027,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level3_take2_2026-11-02_23-40-23.json": {
+ "recordings/continuous/development/bryan/fist/fist_level3_take2_2026-11-02_23-40-23.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.7902,
@@ -13753,7 +13753,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level4_take1_2026-11-02_23-56-46.json": {
+ "recordings/continuous/development/bryan/fist/fist_level4_take1_2026-11-02_23-56-46.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9811,
@@ -14479,7 +14479,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_level4_take2_2026-11-02_23-57-01.json": {
+ "recordings/continuous/development/bryan/fist/fist_level4_take2_2026-11-02_23-57-01.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9966,
@@ -15205,7 +15205,7 @@
    }
   ]
  },
- "recordings/development/bryan/fist/fist_small_take1_2026-11-02_23-52-18.json": {
+ "recordings/continuous/development/bryan/fist/fist_small_take1_2026-11-02_23-52-18.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9245,
@@ -15931,7 +15931,7 @@
    }
   ]
  },
- "recordings/testing/bryan/controls/finger_gun_pose_wrist_only_take1_2026-11-03_00-32-46.json": {
+ "recordings/continuous/testing/bryan/controls/finger_gun_pose_wrist_only_take1_2026-11-03_00-32-46.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.0,
@@ -16657,7 +16657,7 @@
    }
   ]
  },
- "recordings/testing/bryan/controls/finger_gun_pose_wrist_only_vigorous_take1_2026-11-03_01-04-31.json": {
+ "recordings/continuous/testing/bryan/controls/finger_gun_pose_wrist_only_vigorous_take1_2026-11-03_01-04-31.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.0,
@@ -17383,7 +17383,7 @@
    }
   ]
  },
- "recordings/testing/bryan/controls/still_take1_2026-11-03_00-32-31.json": {
+ "recordings/continuous/testing/bryan/controls/still_take1_2026-11-03_00-32-31.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.0,
@@ -18109,7 +18109,7 @@
    }
   ]
  },
- "recordings/testing/bryan/finger_gun/finger_gun_level1_take1_2026-11-03_19-56-04.json": {
+ "recordings/continuous/testing/bryan/finger_gun/finger_gun_level1_take1_2026-11-03_19-56-04.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.4612,
@@ -18835,7 +18835,7 @@
    }
   ]
  },
- "recordings/testing/bryan/finger_gun/finger_gun_level2_take1_2026-11-03_20-05-57.json": {
+ "recordings/continuous/testing/bryan/finger_gun/finger_gun_level2_take1_2026-11-03_20-05-57.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9102,
@@ -19561,7 +19561,7 @@
    }
   ]
  },
- "recordings/testing/bryan/finger_gun/finger_gun_level3_take1_2026-11-03_20-09-29.json": {
+ "recordings/continuous/testing/bryan/finger_gun/finger_gun_level3_take1_2026-11-03_20-09-29.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9847,
@@ -20287,7 +20287,7 @@
    }
   ]
  },
- "recordings/testing/bryan/finger_gun/finger_gun_level4_take1_2026-11-03_19-56-53.json": {
+ "recordings/continuous/testing/bryan/finger_gun/finger_gun_level4_take1_2026-11-03_19-56-53.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.999,
@@ -21013,7 +21013,7 @@
    }
   ]
  },
- "recordings/testing/bryan/finger_gun/finger_gun_single_quick_take1_2026-11-03_01-04-00.json": {
+ "recordings/continuous/testing/bryan/finger_gun/finger_gun_single_quick_take1_2026-11-03_01-04-00.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.934,
@@ -21739,7 +21739,7 @@
    }
   ]
  },
- "recordings/testing/bryan/finger_gun/finger_gun_single_slow_take1_2026-11-03_01-05-17.json": {
+ "recordings/continuous/testing/bryan/finger_gun/finger_gun_single_slow_take1_2026-11-03_01-05-17.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.5149,
@@ -22465,7 +22465,7 @@
    }
   ]
  },
- "recordings/testing/bryan/fist/fist_level1_take1_2026-11-03_00-31-18.json": {
+ "recordings/continuous/testing/bryan/fist/fist_level1_take1_2026-11-03_00-31-18.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.7804,
@@ -23191,7 +23191,7 @@
    }
   ]
  },
- "recordings/testing/bryan/fist/fist_level2_take1_2026-11-03_00-31-34.json": {
+ "recordings/continuous/testing/bryan/fist/fist_level2_take1_2026-11-03_00-31-34.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.7398,
@@ -23917,7 +23917,7 @@
    }
   ]
  },
- "recordings/testing/bryan/fist/fist_level3_take1_2026-11-03_00-31-49.json": {
+ "recordings/continuous/testing/bryan/fist/fist_level3_take1_2026-11-03_00-31-49.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9679,
@@ -24643,7 +24643,7 @@
    }
   ]
  },
- "recordings/testing/bryan/fist/fist_level4_take1_2026-11-03_00-32-09.json": {
+ "recordings/continuous/testing/bryan/fist/fist_level4_take1_2026-11-03_00-32-09.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9992,
@@ -25369,7 +25369,7 @@
    }
   ]
  },
- "recordings/testing/bryan/peace_sign/peace_sign_level1_take1_2026-11-03_00-47-18.json": {
+ "recordings/continuous/testing/bryan/peace_sign/peace_sign_level1_take1_2026-11-03_00-47-18.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.8149,
@@ -26095,7 +26095,7 @@
    }
   ]
  },
- "recordings/testing/bryan/peace_sign/peace_sign_level2_take1_2026-11-03_00-47-34.json": {
+ "recordings/continuous/testing/bryan/peace_sign/peace_sign_level2_take1_2026-11-03_00-47-34.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9741,
@@ -26821,7 +26821,7 @@
    }
   ]
  },
- "recordings/testing/bryan/peace_sign/peace_sign_level3_take1_2026-11-03_00-47-48.json": {
+ "recordings/continuous/testing/bryan/peace_sign/peace_sign_level3_take1_2026-11-03_00-47-48.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9888,
@@ -27547,7 +27547,7 @@
    }
   ]
  },
- "recordings/testing/bryan/peace_sign/peace_sign_level4_take1_2026-11-03_00-48-06.json": {
+ "recordings/continuous/testing/bryan/peace_sign/peace_sign_level4_take1_2026-11-03_00-48-06.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.9944,
@@ -28273,7 +28273,7 @@
    }
   ]
  },
- "recordings/testing/bryan/pinch/pinch_level1_take1_2026-11-03_19-57-10.json": {
+ "recordings/continuous/testing/bryan/pinch/pinch_level1_take1_2026-11-03_19-57-10.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.0,
@@ -28999,7 +28999,7 @@
    }
   ]
  },
- "recordings/testing/bryan/pinch/pinch_level2_take1_2026-11-03_19-57-25.json": {
+ "recordings/continuous/testing/bryan/pinch/pinch_level2_take1_2026-11-03_19-57-25.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.4698,
@@ -29725,7 +29725,7 @@
    }
   ]
  },
- "recordings/testing/bryan/pinch/pinch_level3_take1_2026-11-03_19-57-41.json": {
+ "recordings/continuous/testing/bryan/pinch/pinch_level3_take1_2026-11-03_19-57-41.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.723,
@@ -30451,7 +30451,7 @@
    }
   ]
  },
- "recordings/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json": {
+ "recordings/continuous/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json": {
   "15hz": [
    {
     "angular_acceleration_score": 0.967,

@@ -48,5 +48,5 @@ python evaluate.py recordings/continuous/testing/bryan/manifest.csv recordings/t
 python intensity_scorer.py score recordings/continuous/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json --fps 72.1
 
 # Unit tests
-python -m unittest test_scorer test_golden_scores
+python -m unittest test_scorer
 ```

@@ -16,12 +16,14 @@ movement back to back for the whole clip, except in the single-movement conditio
 | `wrist_only` | Gesture pose held, fingers still, arm moving |
 | `single_quick` | One sharp movement, then a 1.5-2 s pause, repeated |
 | `single_slow` | One slow movement (about 1 s), then a 2 s pause, repeated |
+| `transition` 1-4 | From a relaxed hand, form the gesture in about 1 s / 0.5 s / 0.25 s / as fast as possible, hold about 1 s, relax, repeated |
 
 Copy clips off the headset from `/sdcard/Android/data/com.bryanwei.universalgestures/files/JsonData/` into:
 
 ```
 recordings/<batch>/<person>/<gesture>/<gesture>_level<1-4>_take<n>_<headset timestamp>.json
 recordings/<batch>/<person>/controls/    still and wrist-only clips
+recordings/transitions/<batch>/<person>/<gesture>/    transition clips
 ```
 
 Other conditions use their name in place of `level<n>`, e.g. `fist_small_take1_<timestamp>.json`. Put
@@ -36,15 +38,15 @@ the start; the first 0.5 s of idle hand is then dropped automatically).
 From `src/intensity_module/`:
 
 ```bash
-# Build feature_ranges.json from the development level-4, still and wrist-only clips
-python intensity_scorer.py calibrate recordings/development/bryan/manifest.csv
+# Build feature_ranges.json from the development level-4, transition, still and wrist-only clips
+python intensity_scorer.py calibrate recordings/development/bryan/manifest.csv recordings/transitions/development/bryan/manifest.csv
 
 # Check the testing batch against the targets (add --input-hz 15 to simulate the dynamic recorder)
-python evaluate.py recordings/testing/bryan/manifest.csv
+python evaluate.py recordings/testing/bryan/manifest.csv recordings/transitions/testing/bryan/manifest.csv
 
 # Score one clip window by window
 python intensity_scorer.py score recordings/testing/bryan/pinch/pinch_level4_take1_2026-11-03_19-57-56.json --fps 72.1
 
 # Unit tests
-python -m unittest test_scorer
+python -m unittest test_scorer test_golden_scores
 ```

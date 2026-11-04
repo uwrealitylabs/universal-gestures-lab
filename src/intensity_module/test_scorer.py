@@ -14,6 +14,7 @@ from intensity_scorer import (
     MAX_ANGULAR_SPEED,
     OPPOSITION_IDX,
     calibrate,
+    find_transitions,
     load_calibration,
     load_recording,
     repair_glitches,
@@ -21,6 +22,7 @@ from intensity_scorer import (
     save_calibration,
     score,
     score_recording,
+    score_transitions,
     step_speeds,
     windows,
 )
@@ -54,12 +56,30 @@ def single_move(joints, size, duration, fps=72.0, seconds=1.5):
     return frames
 
 
+SNAP_STARTS = (2.0, 5.0, 8.0)
+
+
+def snaps(joints, size, duration, fps=72.0, seconds=10.0, seed=0):
+    """Rest -> gesture -> rest, three times: a smooth move into the pose over `duration`
+    seconds, a 1 s hold, and a 0.3 s return, with a little tracking noise."""
+    t, frames = hand(seconds, fps)
+    shape = np.zeros_like(t)
+    for s in SNAP_STARTS:
+        into = np.clip((t - s) / duration, 0.0, 1.0)
+        back = np.clip((t - (s + duration + 1.0)) / 0.3, 0.0, 1.0)
+        shape += (1 - np.cos(np.pi * into)) / 2 - (1 - np.cos(np.pi * back)) / 2
+    for j in joints:
+        frames[:, j] += size * shape
+    frames[:, ANGLE_IDX] += np.random.default_rng(seed).normal(0, 0.3, (len(t), len(ANGLE_IDX)))
+    return frames
+
+
 def synthetic_calibration():
     rng = np.random.default_rng(0)
     rest = [(90.0 + rng.normal(0, 0.3, (720, 17)), 72.0)]
     max_effort = [(oscillate(THUMB, 25.0, 4.5, seconds=10.0), 72.0),
                   (oscillate(FIST, 45.0, 3.5, seconds=10.0), 72.0)]
-    return calibrate(max_effort, rest)
+    return calibrate(max_effort, rest, transitions=[(snaps(FIST, 60.0, 0.08), 72.0)])
 
 
 class FeatureLayoutTests(unittest.TestCase):
@@ -205,14 +225,23 @@ class ScoreTests(unittest.TestCase):
         self.assertLessEqual(angular.max(), MAX_ANGULAR_SPEED)
 
     def test_output_keys(self):
-        result = score(oscillate(THUMB, 25.0, 2.0), 72.0, self.cal, confidence=1)
+        result = score(oscillate(THUMB, 25.0, 2.0), 72.0, self.cal, confidence=1, gesture="finger_gun")
 
         self.assertEqual(
             set(result),
-            {"intensity", "angular_speed_score", "angular_peak_speed_score", "angular_acceleration_score",
-             "opposition_speed_score", "confidence"},
+            {"gesture", "intensity", "angular_speed_score", "angular_peak_speed_score", "duration_score",
+             "path_score", "angular_acceleration_score", "opposition_speed_score", "confidence", "features"},
+        )
+        self.assertEqual(
+            set(result["features"]),
+            {"move_duration_s", "path_length_degrees", "average_speed_deg_per_s", "peak_speed_deg_per_s",
+             "peak_acceleration_deg_per_s2", "movement_size_degrees"},
         )
         self.assertEqual(result["confidence"], 1)
+        self.assertEqual(result["gesture"], "finger_gun")
+        for key in ("intensity", "duration_score", "path_score"):
+            self.assertGreaterEqual(result[key], 0.0)
+            self.assertLessEqual(result[key], 1.0)
 
     def test_recording_is_scored_every_half_second(self):
         results = score_recording(oscillate(THUMB, 25.0, 2.0, seconds=10.0), 72.0, self.cal)
@@ -235,7 +264,104 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(results[-1]["intensity"], score(frames, 15.0, self.cal)["intensity"])
 
 
+class RestToGestureTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cal = synthetic_calibration()
+
+    def scores(self, frames, fps=72.0):
+        return [r["intensity"] for r in score_transitions(frames, fps, self.cal)]
+
+    def test_faster_moves_into_a_pose_score_higher(self):
+        means = [np.mean(self.scores(snaps(FIST, 60.0, d))) for d in (1.2, 0.5, 0.25, 0.08)]
+
+        self.assertEqual(means, sorted(means))
+        self.assertLess(means[0], 0.1)
+        self.assertGreaterEqual(means[-1], 0.8)
+
+    def test_slowly_moving_into_finger_gun_pose_scores_near_zero(self):
+        # The ticket's example: curling the other fingers into a finger gun over 1.5 s.
+        self.assertLess(max(self.scores(snaps([6, 8, 10, 12, 14, 15], 70.0, 1.5))), 0.1)
+
+    def test_snap_score_does_not_depend_on_movement_size(self):
+        small = self.scores(snaps(FIST, 35.0, 0.15))
+        big = self.scores(snaps(FIST, 70.0, 0.15))
+
+        self.assertAlmostEqual(np.mean(small), np.mean(big), delta=0.05)
+
+    def test_only_moves_into_the_gesture_are_found(self):
+        reached = np.array(find_transitions(snaps(FIST, 60.0, 0.2), 72.0, self.cal["gates"]["angle_degrees"])) / 72.0
+
+        self.assertEqual(len(reached), 3)
+        np.testing.assert_allclose(reached, np.array(SNAP_STARTS) + 0.2, atol=0.2)
+
+    def test_snap_gets_duration_credit_but_flick_and_repetition_do_not(self):
+        snap = score_transitions(snaps(FIST, 60.0, 0.08), 72.0, self.cal)
+        t, flick = hand(3.0, 72.0)
+        flick[:, THUMB] += 40.0 * np.exp(-((t - 1.5) / 0.05) ** 2)[:, None]   # out and straight back
+        repeat = oscillate(FIST, 45.0, 3.0, seconds=6.0)
+
+        self.assertTrue(all(r["duration_score"] > 0.9 for r in snap))
+        self.assertEqual(max(r["duration_score"] for r in score_recording(flick, 72.0, self.cal)), 0.0)
+        self.assertEqual(max(r["duration_score"] for r in score_recording(repeat, 72.0, self.cal)), 0.0)
+
+    def test_live_stream_with_short_gestures(self):
+        # One stream, scored the way an app would: score() on a rolling 2 s buffer every 0.1 s,
+        # with the shipped calibration. A fast snap held 0.4 s, a 1.5 s slow move held 0.4 s,
+        # then fast repetition; relaxed in between.
+        cal = load_calibration()
+        fps = 72.0
+        t, stream = hand(14.0, fps)
+        def move(start, duration, hold, size=60.0):
+            into = np.clip((t - start) / duration, 0, 1)
+            back = np.clip((t - start - duration - hold) / 0.3, 0, 1)
+            return size * ((1 - np.cos(np.pi * into)) / 2 - (1 - np.cos(np.pi * back)) / 2)
+        shape = move(2.0, 0.08, 0.4) + move(5.0, 1.5, 0.4)
+        shape += np.where((t > 9.5) & (t < 12.5), 30.0 * (1 - np.cos(2 * np.pi * 3.0 * (t - 9.5))), 0.0)
+        stream[:, FIST] += shape[:, None]
+        stream[:, ANGLE_IDX] += np.random.default_rng(4).normal(0, 0.3, (len(t), len(ANGLE_IDX)))
+        buffer = int(2.0 * fps)
+        live = {round(e / fps, 1): score(stream[max(0, e - buffer):e], fps, cal)["intensity"]
+                for e in range(int(0.5 * fps), len(stream) + 1, int(0.1 * fps))}
+        peak = lambda a, b: max(v for k, v in live.items() if a <= k <= b)
+
+        self.assertGreater(peak(2.1, 2.6), 0.85)      # the fast snap, read just after it
+        self.assertLess(peak(3.4, 4.8), 0.05)         # relaxed again
+        self.assertLess(peak(5.0, 6.8), 0.3)          # the slow move: at most a brief bump
+        self.assertLess(peak(6.6, 6.8), 0.05)         # and about 0 once in the pose
+        self.assertGreater(peak(10.0, 12.4), 0.85)    # fast repetition, same formula
+
+    def test_timestamps_score_like_the_measured_rate(self):
+        frames = snaps(FIST, 60.0, 0.15)
+        times = np.arange(len(frames)) / 72.0 + np.random.default_rng(5).normal(0, 0.001, len(frames))
+        times.sort()
+        with_rate = score(frames[300:444], 72.0, self.cal)
+        with_times = score(frames[300:444], calibration=self.cal, timestamps=times[300:444])
+
+        self.assertAlmostEqual(with_rate["intensity"], with_times["intensity"], delta=0.05)
+
+    def test_still_hand_has_no_moves(self):
+        still = 90.0 + np.random.default_rng(2).normal(0, 0.3, (720, 17))
+        results = score_recording(still, 72.0, self.cal)
+
+        self.assertEqual(find_transitions(still, 72.0, self.cal["gates"]["angle_degrees"]), [])
+        self.assertEqual(max(r["duration_score"] for r in results), 0.0)
+        self.assertLess(np.mean([r["intensity"] for r in results]), 0.05)
+
+
 class CalibrationTests(unittest.TestCase):
+    def test_duration_and_path_are_added_without_changing_the_rest(self):
+        rng = np.random.default_rng(0)
+        rest = [(90.0 + rng.normal(0, 0.3, (720, 17)), 72.0)]
+        max_effort = [(oscillate(FIST, 45.0, 3.5, seconds=10.0), 72.0)]
+        without = calibrate(max_effort, rest)
+        with_snaps = calibrate(max_effort, rest, transitions=[(snaps(FIST, 60.0, 0.08), 72.0)])
+
+        for key in ("gates", "components", "curve", "path"):
+            self.assertEqual(without[key], with_snaps[key])
+        self.assertIsNone(without["duration"]["full_rise_s"])
+        self.assertLess(with_snaps["duration"]["full_rise_s"], 0.1)
+
     def test_round_trip_through_json(self):
         cal = synthetic_calibration()
         clip = oscillate(THUMB, 20.0, 1.5)
@@ -303,6 +429,22 @@ class EvaluateTests(unittest.TestCase):
         clips = [c for c in passing_clips() if c["condition"] != "level"]
 
         self.assertIn("no level clips", check(clips))
+
+    def test_rest_to_gesture_clips_meet_the_same_targets(self):
+        snaps_ = [clip("pinch", "transition", lv, s) for lv, s in (("1", [0.0]), ("2", [0.3]), ("3", [0.6]), ("4", [0.9]))]
+        self.assertEqual(check(passing_clips() + snaps_), [])
+
+        snaps_[3]["intensity"] = [0.6]
+        snaps_[0]["intensity"] = [0.2]
+        failures = check(passing_clips() + snaps_)
+
+        self.assertIn("pinch (rest -> gesture) level 4 averages 0.600 (target >= 0.85)", failures)
+        self.assertIn("pinch (rest -> gesture) level 1 averages 0.200 (target <= 0.15)", failures)
+
+    def test_rest_to_gesture_gesture_needs_every_level(self):
+        clips = passing_clips() + [clip("pinch", "transition", "4", [0.9])]
+
+        self.assertIn("pinch (rest -> gesture) has no level 1, 2, 3 clips", check(clips))
 
 
 if __name__ == "__main__":

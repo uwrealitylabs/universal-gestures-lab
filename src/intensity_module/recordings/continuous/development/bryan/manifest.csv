@@ -1,0 +1,23 @@
+file,source_file,session,gesture,condition,level,take,frames,fps,trimmed_start_s,reps_per_min,notes
+finger_gun/finger_gun_level1_take1_2026-11-02_23-35-46.json,_2026-11-02_23-35-46.json,2026-11-02,finger_gun,level,1,1,699,69.9,0,36,
+finger_gun/finger_gun_level1_take2_2026-11-02_23-36-01.json,_2026-11-02_23-36-01.json,2026-11-02,finger_gun,level,1,2,722,72.2,0,30,
+finger_gun/finger_gun_level2_take1_2026-11-02_23-36-21.json,_2026-11-02_23-36-21.json,2026-11-02,finger_gun,level,2,1,721,72.1,0,60,
+finger_gun/finger_gun_level2_take2_2026-11-02_23-36-37.json,_2026-11-02_23-36-37.json,2026-11-02,finger_gun,level,2,2,721,72.1,0,66,
+finger_gun/finger_gun_level3_take1_2026-11-02_23-36-56.json,_2026-11-02_23-36-56.json,2026-11-02,finger_gun,level,3,1,721,72.1,0,120,
+finger_gun/finger_gun_level3_take2_2026-11-02_23-37-11.json,_2026-11-02_23-37-11.json,2026-11-02,finger_gun,level,3,2,721,72.1,0,114,
+finger_gun/finger_gun_level4_take1_2026-11-02_23-37-26.json,_2026-11-02_23-37-26.json,2026-11-02,finger_gun,level,4,1,721,72.1,0,288,slows slightly near the end
+finger_gun/finger_gun_level4_take2_2026-11-02_23-37-41.json,_2026-11-02_23-37-41.json,2026-11-02,finger_gun,level,4,2,721,72.1,0,276,slows slightly near the end
+finger_gun/finger_gun_small_take1_2026-11-02_23-38-03.json,_2026-11-02_23-38-03.json,2026-11-02,finger_gun,small,,1,685,72.1,0.5,78,"thumb swing ~75% of full size, not half; faster than the level-2 takes"
+controls/finger_gun_pose_wrist_only_take1_2026-11-02_23-38-20.json,_2026-11-02_23-38-20.json,2026-11-02,finger_gun,wrist_only,,1,632,72.2,1.25,,"fingers frozen in gun pose, arm moving"
+fist/fist_level1_take1_2026-11-02_23-38-59.json,_2026-11-02_23-38-59.json,2026-11-02,fist,level,1,1,722,72.2,0,12,pauses between reps
+fist/fist_level1_take2_2026-11-02_23-39-15.json,_2026-11-02_23-39-15.json,2026-11-02,fist,level,1,2,721,72.1,0,12,pauses between reps
+fist/fist_level2_take1_2026-11-02_23-39-37.json,_2026-11-02_23-39-37.json,2026-11-02,fist,level,2,1,721,72.1,0,42,
+fist/fist_level2_take2_2026-11-02_23-39-52.json,_2026-11-02_23-39-52.json,2026-11-02,fist,level,2,2,721,72.1,0,36,short pauses
+fist/fist_level3_take1_2026-11-02_23-40-07.json,_2026-11-02_23-40-07.json,2026-11-02,fist,level,3,1,721,72.1,0,60,
+fist/fist_level3_take2_2026-11-02_23-40-23.json,_2026-11-02_23-40-23.json,2026-11-02,fist,level,3,2,721,72.1,0,60,
+fist/fist_small_take1_2026-11-02_23-52-18.json,_2026-11-02_23-52-18.json,2026-11-02,fist,small,,1,722,72.2,0,48,"fingers close ~77% of full range, not half"
+controls/still_take1_2026-11-02_23-52-33.json,_2026-11-02_23-52-33.json,2026-11-02,none,still,,1,721,72.1,0,,hand held still
+fist/fist_level4_take1_2026-11-02_23-56-46.json,_2026-11-02_23-56-46.json,2026-11-02,fist,level,4,1,722,72.2,0,208,tracking glitches in ~25% of frame steps; add ~5% to mean speed
+fist/fist_level4_take2_2026-11-02_23-57-01.json,_2026-11-02_23-57-01.json,2026-11-02,fist,level,4,2,722,72.2,0,202,tracking glitches in ~27% of frame steps; add ~5% to mean speed
+finger_spread/finger_spread_level4_take1_2026-11-03_00-29-46.json,_2026-11-03_00-29-46.json,2026-11-03,finger_spread,level,4,1,721,72.1,0,164,"fingers straight, spread and closed sideways; calibrates finger abduction"
+finger_spread/finger_spread_level4_take2_2026-11-03_00-30-01.json,_2026-11-03_00-30-01.json,2026-11-03,finger_spread,level,4,2,722,72.2,0,152,"fingers straight, spread and closed sideways; calibrates finger abduction"

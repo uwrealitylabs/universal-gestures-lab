@@ -11,6 +11,8 @@ from intensity_scorer import (
     ANGLE_IDX,
     CURL_IDX,
     FLEXION_IDX,
+    LIVE_BUFFER_S,
+    LOWPASS_MIN_RATE_HZ,
     MAX_ANGULAR_SPEED,
     OPPOSITION_IDX,
     calibrate,
@@ -171,19 +173,40 @@ class ScoreTests(unittest.TestCase):
 
         self.assertAlmostEqual(big["intensity"], small["intensity"], delta=0.05)
 
-    def test_jitter_faster_than_voluntary_movement_is_filtered_out(self):
+    def test_jitter_faster_than_voluntary_movement_scores_zero_at_any_amplitude(self):
         # Wiggling a finger faster scores higher up to about 3 Hz, but motion faster than a person
-        # moves on purpose (tremor, tracking jitter) is filtered out rather than scoring as maximum.
+        # moves on purpose (tremor, tracking jitter) scores about 0 rather than as maximum effort,
+        # however large it is.
         cal = load_calibration()
-        def median_score(hz):
-            frames = oscillate([2, 4], 13.0, hz, seconds=4.0)
+        def median_score(amplitude, hz):
+            frames = oscillate([2, 4], amplitude, hz, seconds=4.0)
+            frames[:, ANGLE_IDX] += np.random.default_rng(0).normal(0, 0.3, (len(frames), len(ANGLE_IDX)))
             return float(np.median([r["intensity"] for r in score_recording(frames, 72.0, cal)[2:]]))
-        slow, normal, fast = median_score(1.0), median_score(2.0), median_score(3.0)
 
-        self.assertLess(slow, normal)
-        self.assertLess(normal, fast)
-        self.assertGreater(fast, 0.75)
-        self.assertLess(max(median_score(10.0), median_score(12.0)), 0.05)
+        for amplitude in (13.0, 20.0, 40.0):
+            with self.subTest(amplitude=amplitude):
+                slow, normal, fast = (median_score(amplitude, hz) for hz in (1.0, 2.0, 3.0))
+                self.assertLess(slow, normal)
+                self.assertLess(normal, fast)
+                self.assertGreater(fast, 0.75)
+                for hz in (8.0, 10.0, 12.0):
+                    self.assertLess(median_score(amplitude, hz), 0.05, f"{hz} Hz")
+
+    def test_deliberate_movement_keeps_its_full_score(self):
+        # Sharp snaps and fast repetition are deliberate, so the jitter check leaves them alone.
+        for frames in (snaps(FIST, 60.0, 0.08), oscillate(FIST, 45.0, 4.5, seconds=4.0)):
+            moving = [r for r in score_recording(frames, 72.0, self.cal) if r["angular_peak_speed_score"] > 0.5]
+            self.assertTrue(moving)
+            self.assertGreater(min(r["features"]["deliberate_share"] for r in moving), 0.8)
+
+    def test_jitter_check_needs_at_least_30_hz_input(self):
+        # Below LOWPASS_MIN_RATE_HZ, motion above half the input rate is already folded into
+        # slower motion at capture, so the check is skipped rather than guessing.
+        self.assertEqual(LOWPASS_MIN_RATE_HZ, 30.0)
+        frames = oscillate([2, 4], 40.0, 10.0, fps=30.0, seconds=4.0)
+        self.assertLess(max(r["features"]["deliberate_share"] for r in score_recording(frames, 30.0, self.cal)), 0.4)
+        slow = oscillate([2, 4], 40.0, 10.0, fps=15.0, seconds=4.0)
+        self.assertEqual({r["features"]["deliberate_share"] for r in score_recording(slow, 15.0, self.cal)}, {1.0})
 
     def test_faster_repetition_scores_higher(self):
         slow = score(oscillate(THUMB, 25.0, 0.7), 72.0, self.cal)
@@ -249,7 +272,7 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(
             set(result["features"]),
             {"move_duration_s", "path_length_degrees", "average_speed_deg_per_s", "peak_speed_deg_per_s",
-             "peak_acceleration_deg_per_s2", "movement_size_degrees"},
+             "peak_acceleration_deg_per_s2", "movement_size_degrees", "deliberate_share"},
         )
         self.assertEqual(result["confidence"], 1)
         self.assertEqual(result["gesture"], "finger_gun")
@@ -276,6 +299,49 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(len(results), 2)
         self.assertGreater(results[-1]["intensity"], 0.5)
         self.assertEqual(results[-1]["intensity"], score(frames, 15.0, self.cal)["intensity"])
+
+
+class LiveConsistencyTests(unittest.TestCase):
+    """score_recording() scores each window from only the frames up to its end, as score() on a
+    live rolling buffer would, so later frames never change an earlier window."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cal = synthetic_calibration()
+
+    def live_scores(self, frames, fps):
+        # score() on the last LIVE_BUFFER_S of frames at the end of each 0.5 s window.
+        steps = int(np.floor((len(frames) - 1) / fps * 15 + 1e-9))
+        ends = list(range(8, steps + 1, 8)) + ([steps] if steps % 8 else [])
+        buffer = int(round(LIVE_BUFFER_S * fps))
+        lasts = [len(frames) if e == steps else int(np.floor(e / 15 * fps + 1e-9)) + 1 for e in ends]
+        return [score(frames[max(0, last - buffer):last], fps, self.cal) for last in lasts]
+
+    def test_every_window_matches_live_scoring(self):
+        stream = snaps(FIST, 60.0, 0.1) + oscillate(THUMB, 20.0, 2.5, seconds=10.0) - 90.0
+        for fps in (72.0, 15.0):
+            frames = stream if fps == 72.0 else stream[np.round(np.arange(0, 10, 1 / 15) * 72).astype(int)]
+            with self.subTest(fps=fps):
+                offline = score_recording(frames, fps, self.cal)
+                live = self.live_scores(frames, fps)
+                self.assertEqual(len(offline), len(live))
+                for a, b in zip(offline, live):
+                    self.assertEqual({k: v for k, v in a.items() if k != "start_s"}, b)
+
+    def test_step_at_a_window_boundary_uses_no_later_frames(self):
+        # 15 Hz, still hand, one joint steps 60 degrees at frame 15 and holds. The second window
+        # ends at frame 16, before the hold could be confirmed, so it must score as live does
+        # then, whatever comes after.
+        frames = np.full((40, 17), 90.0)
+        frames[:, OPPOSITION_IDX] = 0.05
+        frames[15:, 2] += 60.0
+
+        second = score_recording(frames, 15.0, self.cal)[1]
+        live = score(frames[:17], 15.0, self.cal)
+
+        self.assertEqual({k: v for k, v in second.items() if k != "start_s"}, live)
+        self.assertEqual(second, score_recording(frames[:17], 15.0, self.cal)[1])
+        self.assertEqual(second["duration_score"], 0.0)
 
 
 class RestToGestureTests(unittest.TestCase):

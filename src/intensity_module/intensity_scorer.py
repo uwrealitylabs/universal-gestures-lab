@@ -54,6 +54,7 @@ import json
 import os
 
 import numpy as np
+from scipy.signal import butter, sosfilt, sosfilt_zi
 
 FEATURE_NAMES = [
     "thumb_curl", "thumb_abduction",
@@ -86,9 +87,24 @@ MAX_GLITCH_S = 0.25
 # (1110 deg/s, 1.24 m/s), for glitches the repair cannot pair up.
 MAX_ANGULAR_SPEED = 1200.0
 MAX_OPPOSITION_SPEED = 1.3
-# Motion faster than this (Hz) is filtered out before resampling: deliberate finger movement
-# tops out around 5 Hz, faster wiggles are tremor or tracking jitter.
+# Jitter rejection: motion faster than deliberate finger movement (tremor, tracking jitter) is
+# detected at the input rate, before resampling. Over the look-back, the share of the hand's
+# path that survives a causal Butterworth low-pass (LOWPASS_HZ, LOWPASS_ORDER poles) is close to
+# 1 for any deliberate movement, however fast or sharp, since net displacement survives a
+# low-pass, and falls towards 0 for oscillation above LOWPASS_HZ, whatever its amplitude.
+# Max-effort repetition in the recordings runs at 3.5-5 Hz. Path is measured through a
+# JITTER_DEADBAND_DEGREES dead band, so frame-to-frame tracking noise adds none, and the
+# low-passed path includes the distance it still lags behind the latest frame, so a move that
+# has just finished counts in full. The score is scaled from 0 at JITTER_SHARE_ZERO to full at
+# JITTER_SHARE_FULL. Supported input: at least LOWPASS_MIN_RATE_HZ. Below that (such as the
+# 15 Hz dynamic recorder) the check is skipped, because motion above half the input rate is
+# already folded into slower motion at capture and cannot be told apart afterwards.
 LOWPASS_HZ = 6.0
+LOWPASS_ORDER = 4
+LOWPASS_MIN_RATE_HZ = 30.0
+JITTER_DEADBAND_DEGREES = 1.0
+JITTER_SHARE_ZERO = 0.4
+JITTER_SHARE_FULL = 0.8
 # Untrimmed clips start with roughly this much idle hand before the movement begins.
 IDLE_START_S = 0.5
 
@@ -136,16 +152,14 @@ MIN_MOVE_SPEED = 100.0       # summed joint speed (deg/s) a move must reach
 # measured along the move, as distance from the pose it ends in, relative to the move's size:
 #   rested  for RESTED_S before the move began, that distance varied by less than RESTED_FRACTION
 #           (at the very start of the frames, at least RESTED_MIN_S of visible rest is enough)
-#   held    for HELD_S after it ended (or what has arrived, at least HELD_MIN_S), the hand
-#           stayed within HELD_FRACTION of the pose
+#   held    for HELD_S after it ended, the hand stayed within HELD_FRACTION of the pose
 # In the recordings, snaps from a relaxed hand followed 0.8 s of rest or more, while fast
 # repetition rests far less, so it is left to angular_speed. A flick goes straight back, so it
 # is not held.
 RESTED_S = 0.8
 RESTED_MIN_S = 0.5
 RESTED_FRACTION = 0.25
-HELD_S = 0.15
-HELD_MIN_S = 0.05
+HELD_S = 0.1
 HELD_FRACTION = 0.3
 # Walking back from a move's end, the move began where the distance from its end pose stops
 # growing: it grows by less than PLATEAU_GROWTH over the PLATEAU_S before (the hand was steady
@@ -166,6 +180,7 @@ HOLD_S = 0.3
 SCORE_DELAY_S = 0.35
 RELAXED_S = 0.3
 TRANSITION_BUFFER_S = 2.0    # frames passed to score() when a gesture is recognised
+LIVE_BUFFER_S = 2.0          # the rolling buffer score() is given live, and windows() uses per window
 
 
 def load_recording(path):
@@ -249,21 +264,19 @@ def repair_glitches(frames, fps):
 
 
 def lowpass(frames, fps, cutoff=None):
-    """Remove motion faster than voluntary finger movement (tremor, tracking jitter).
+    """The jitter check's view of the motion without tremor or tracking jitter.
 
-    A Gaussian smoothing whose response is -3 dB at LOWPASS_HZ, run before resampling so fast
-    jitter neither scores as maximum effort nor aliases at SAMPLE_RATE_HZ. Speed and movement
-    size shrink together, so quickness of ordinary movement is unchanged.
+    A causal Butterworth low-pass (see LOWPASS_HZ), started at the first frame's value so it has
+    no start-up transient and uses no future frames. Inputs slower than LOWPASS_MIN_RATE_HZ are
+    returned unchanged.
     """
+    frames = np.asarray(frames, dtype=np.float64)
     cutoff = LOWPASS_HZ if cutoff is None else cutoff
-    sigma = np.sqrt(np.log(2.0)) / (2.0 * np.pi * cutoff) * fps          # in frames
-    if len(frames) < 2 or sigma < 0.5:
+    if len(frames) < 2 or fps < LOWPASS_MIN_RATE_HZ:
         return frames
-    r = int(np.ceil(3.0 * sigma))
-    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
-    k /= k.sum()
-    padded = np.pad(np.asarray(frames, dtype=np.float64), ((r, r), (0, 0)), mode="edge")
-    return np.stack([np.convolve(padded[:, j], k, mode="valid") for j in range(padded.shape[1])], axis=1)
+    sos = butter(LOWPASS_ORDER, cutoff, fs=fps, output="sos")
+    zi = sosfilt_zi(sos)
+    return np.stack([sosfilt(sos, frames[:, j], zi=zi * frames[0, j])[0] for j in range(frames.shape[1])], axis=1)
 
 
 def resample(frames, fps, rate=SAMPLE_RATE_HZ):
@@ -271,7 +284,7 @@ def resample(frames, fps, rate=SAMPLE_RATE_HZ):
     if len(frames) < 2:
         return frames
     t = np.arange(len(frames)) / fps
-    t_new = np.arange(0.0, t[-1] + 1e-9, 1.0 / rate)
+    t_new = t[-1] - np.arange(0.0, t[-1] + 1e-9, 1.0 / rate)[::-1]   # ends on the latest frame
     return np.stack([np.interp(t_new, t, frames[:, k]) for k in range(frames.shape[1])], axis=1)
 
 
@@ -394,9 +407,9 @@ def finger_moves(frames, fps):
         at_first_frame = end + 1 - buffer <= 0          # seg begins with the first frame given
         if start is not None and start < rest_n and at_first_frame:
             rest_n = start if start >= int(round(RESTED_MIN_S * fps)) else rest_n
-        # Judge the hold on what has arrived since the move ended (at least HELD_MIN_S), as live.
+        # Judge the hold only once HELD_S has arrived since the move ended, as live.
         after = a[end:end + hold_n + 1]
-        if start is not None and start >= rest_n and len(after) >= max(2, int(round(HELD_MIN_S * fps))) + 1:
+        if start is not None and start >= rest_n and len(after) >= hold_n + 1:
             move = float(distance[start])
             before = distance[start - rest_n:start + 1]
             drift = (np.abs(after - seg[-pose:].mean(axis=0)) * w).sum(axis=1) / max(w.sum(), 1e-9)
@@ -424,32 +437,77 @@ def rise_to_score(rise, zero_rise, full_rise):
     return float(np.clip(np.log(zero_rise / max(rise, 1e-6)) / np.log(zero_rise / full_rise), 0.0, 1.0))
 
 
-def windows(frames, fps, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=SAMPLE_RATE_HZ):
-    """Return [(start_s, features), ...] for consecutive windows; a short input is one window.
+def live_features(frames, fps, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=SAMPLE_RATE_HZ):
+    """Features of the most recent window, computed from only the frames given.
 
-    When the steps do not divide evenly, a last window is aligned to the end of the input,
-    overlapping the one before it, so the final movement is scored as score() would score it.
-    Each window also carries the finger moves that ended within it ("moves").
+    This is what score() sees on a live rolling buffer, and what windows() uses for each window
+    of a recording, so offline and live scores are the same. Returns None for fewer than two steps.
     """
-    samples = resample(lowpass(repair_glitches(frames, fps), fps), fps, rate)
+    repaired = repair_glitches(frames, fps)
+    samples = resample(repaired, fps, rate)
     angular, opposition = step_speeds(samples, rate)
     if len(angular) == 0:
-        return []
+        return None
     n = min(max(2, int(round(window_s * rate))), len(angular))
     back = max(n, int(round(lookback_s * rate)))
-    ends = list(range(n, len(angular) + 1, n))
-    if ends[-1] != len(angular):
-        ends.append(len(angular))
-    moves = finger_moves(frames, fps)
-    t_last = (len(frames) - 1) / fps
+    features = window_features(samples[-(back + 1):], angular[-n:], opposition[-n:], rate)
+    features["moves"] = _recent_moves(frames, fps, window_s, rate)
+    features["deliberate_share"] = deliberate_share(repaired, fps, lookback_s)
+    return features
+
+
+def deliberate_share(frames, fps, lookback_s=LOOKBACK_S):
+    """Share of the hand's path over the last lookback_s that is slower than LOWPASS_HZ.
+
+    Joints are weighted by how much they move. About 1 for deliberate movement, low for jitter;
+    1 when the input is slower than LOWPASS_MIN_RATE_HZ or the hand does not move.
+    """
+    if fps < LOWPASS_MIN_RATE_HZ or len(frames) < 3:
+        return 1.0
+    a = np.asarray(frames, dtype=np.float64)[:, ANGLE_IDX]
+    k = max(2, int(round(lookback_s * fps)))
+    raw, smooth = _deadband(a)[-k:], _deadband(lowpass(a, fps))[-k:]
+    raw_path = np.abs(np.diff(raw, axis=0)).sum(axis=0)
+    smooth_path = np.abs(np.diff(smooth, axis=0)).sum(axis=0) + np.abs(raw[-1] - smooth[-1])
+    w = _participation(a[-k:].max(axis=0) - a[-k:].min(axis=0))
+    total = float((w * raw_path).sum())
+    return 1.0 if total < 1e-9 else float(np.clip((w * smooth_path).sum() / total, 0.0, 1.0))
+
+
+def _deadband(x, width=JITTER_DEADBAND_DEGREES):
+    """Follow each column, moving only once it is more than width / 2 away (a dead band)."""
+    out = np.empty_like(x)
+    y = x[0].copy()
+    for i in range(len(x)):
+        y = np.clip(y, x[i] - width / 2, x[i] + width / 2)
+        out[i] = y
+    return out
+
+
+def windows(frames, fps, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=SAMPLE_RATE_HZ):
+    """Return [(start_s, features), ...] for consecutive windows of a recording.
+
+    Each window is scored as live scoring would be at its end: from only the frames up to then,
+    the last LIVE_BUFFER_S of them (see live_features()). When the steps do not divide evenly, a
+    last window is aligned to the end of the input, overlapping the one before it.
+    """
+    frames = np.asarray(frames, dtype=np.float64)
+    if len(frames) < 2:
+        return []
+    steps = int(np.floor((len(frames) - 1) / fps * rate + 1e-9))
+    if steps < 1:
+        return []
+    n = min(max(2, int(round(window_s * rate))), steps)
+    ends = list(range(n, steps + 1, n))
+    if ends[-1] != steps:
+        ends.append(steps)
+    buffer = max(2, int(round(LIVE_BUFFER_S * fps)))
     out = []
     for end in ends:
-        f = window_features(samples[max(0, end - back):end + 1], angular[end - n:end], opposition[end - n:end], rate)
-        if end == len(angular):   # the final window reaches the last frame, as in score()
-            f["moves"] = [m for m in moves if t_last - n / rate < m[0] <= t_last + 1e-9]
-        else:
-            f["moves"] = [m for m in moves if (end - n) / rate < m[0] <= end / rate]
-        out.append(((end - n) / rate, f))
+        last = len(frames) if end == steps else int(np.floor(end / rate * fps + 1e-9)) + 1
+        f = live_features(frames[max(0, last - buffer):last], fps, window_s, lookback_s, rate)
+        if f is not None:
+            out.append(((end - n) / rate, f))
     return out
 
 
@@ -539,8 +597,9 @@ def _weighted_mean(values, size):
 def _recent_moves(frames, fps, window_s, rate):
     """Finger moves that ended within the last scoring window of `frames`, as score() sees it.
 
-    The window reaches the last frame itself, not just the last resampled step, so a move that
-    has just finished counts.
+    The window reaches the last frame itself. Only the frames given are used, so a move counts
+    as a snap once HELD_S of its hold has arrived; scoring SCORE_DELAY_S after the gesture is
+    recognised leaves time for that.
     """
     t_last = (len(frames) - 1) / fps
     n = min(max(2, int(round(window_s * rate))), int(np.floor(t_last * rate + 1e-9)))
@@ -657,6 +716,8 @@ def _result(features, cal, confidence, gesture=None):
     s["path"] = 0.0 if not path_max else _movement_gate(features["angle_size"], gates["angle_size"]) * min(path / path_max, 1.0)
     knee, power = cal["curve"]["knee"], cal["curve"]["power"]
     intensity = combine_intensity(s, lambda x: x if x >= knee else knee * (x / knee) ** power)
+    share = features.get("deliberate_share", 1.0)
+    intensity *= float(np.clip((share - JITTER_SHARE_ZERO) / (JITTER_SHARE_FULL - JITTER_SHARE_ZERO), 0.0, 1.0))
     size = features["angle_size"]
     return {
         "gesture": gesture,  # Passed through from the caller (e.g. the classifier's label).
@@ -675,6 +736,7 @@ def _result(features, cal, confidence, gesture=None):
             "peak_speed_deg_per_s": round(_weighted_mean(features["peak_step_speed"], size), 1),
             "peak_acceleration_deg_per_s2": round(_weighted_mean(features["peak_accel"], size), 1),
             "movement_size_degrees": round(float(size.max()), 2),
+            "deliberate_share": round(float(features.get("deliberate_share", 1.0)), 3),
         },
     }
 
@@ -700,15 +762,9 @@ def score(frames, fps=None, calibration=None, confidence=None, gesture=None, tim
     """
     frames, fps = _timing(frames, fps, timestamps)
     cal = calibration if calibration is not None else load_calibration()
-    rate = cal["sample_rate_hz"]
-    samples = resample(lowpass(repair_glitches(frames, fps), fps), fps, rate)
-    angular, opposition = step_speeds(samples, rate)
-    if len(angular) == 0:
+    features = live_features(frames, fps, cal["window_s"], cal["lookback_s"], cal["sample_rate_hz"])
+    if features is None:
         raise ValueError("need at least two frames to measure motion")
-    n = min(max(2, int(round(cal["window_s"] * rate))), len(angular))
-    back = max(n, int(round(cal["lookback_s"] * rate)))
-    features = window_features(samples[-(back + 1):], angular[-n:], opposition[-n:], rate)
-    features["moves"] = _recent_moves(frames, fps, cal["window_s"], rate)
     return _result(features, cal, confidence, gesture)
 
 

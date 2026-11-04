@@ -7,29 +7,29 @@
     "power": 2.0
   },
   "gates": {
-    "angle_degrees": 12.463,
-    "opposition_metres": 0.007752
+    "angle_degrees": 12.4942,
+    "opposition_metres": 0.00853
   },
   "components": {
     "angular_speed": {
       "zero": 0.666667,
-      "max": 5.779852
+      "max": 5.796203
     },
     "angular_peak_speed": {
       "zero": 0.666667,
-      "max": 7.426893
+      "max": 7.985987
     },
     "angular_accel": {
       "zero": 0.0,
-      "max": 11.315102
+      "max": 12.016543
     },
     "opposition_speed": {
       "zero": 0.666667,
-      "max": 4.996194
+      "max": 5.177892
     }
   },
   "path": {
-    "max_degrees": 128.5289
+    "max_degrees": 158.1954
   },
   "duration": {
     "zero_rise_s": 1.0,

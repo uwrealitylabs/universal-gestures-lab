@@ -7,8 +7,8 @@ give exactly the same windows and the same angular_speed, angular_peak_speed, an
 acceleration, opposition speed and confidence values as in golden_scores.json. `intensity`
 itself is not locked, because it now also uses duration_score; evaluate.py checks it.
 
-Regenerate only when these components are meant to change (last: the low-pass filter before
-resampling):
+Regenerate only when these components are meant to change (last: each window scored from only
+the frames up to its end, as live):
   python test_golden_scores.py --update
 """
 

@@ -127,85 +127,103 @@ class PairGestureDataset(Dataset):
         i, j, label = self.pairs[idx]
         return self.X[i].float(), self.X[j].float(), torch.tensor(label, dtype=torch.float32)
 
-train_path = "train_data/train_0.pt"
-test_path = "test_data/test_0.pt"
-X_train_full, Y_train_full = load_data(train_path)
-X_test, Y_test = load_data(test_path)
-
-val_split = 0.15
-indices = np.arange(len(X_train_full))
-train_idx, val_idx = train_test_split(indices, test_size=val_split, stratify=Y_train_full.numpy(), random_state=42)
-X_train, Y_train = X_train_full[train_idx], Y_train_full[train_idx]
-X_val, Y_val = X_train_full[val_idx], Y_train_full[val_idx]
-
-train_dataset = TripletGestureDataset(X_train, Y_train)
-val_dataset = PairGestureDataset(X_val, Y_val)
-test_dataset = PairGestureDataset(X_test, Y_test)
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-# Initialize the model, loss function, and optimizer
-model = SiameseNetwork(input_dim, embedding_dim)
-criterion = TripletLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-# Training and evaluation
-for epoch in range(num_epochs):
+def train_epoch(model, loader, criterion, optimizer):
+    """One pass over the training triplets. Returns the number of batches trained on.
+    The triplet count is not a multiple of the batch size, so the last batch can hold a single
+    triplet; BatchNorm1d cannot train on one sample, so that batch is skipped."""
     model.train()
-    train_dataset.resample()  # fresh random triplets each epoch, not just once at startup
-    for batch_idx, (anchor, positive, negative) in enumerate(train_loader):
-      optimizer.zero_grad()
-      anchor_out = model.forward_one(anchor)
-      positive_out = model.forward_one(positive)
-      negative_out = model.forward_one(negative)
-      loss = criterion(anchor_out, positive_out, negative_out)
-      loss.backward()
-      optimizer.step()
+    trained = 0
+    for anchor, positive, negative in loader:
+        if len(anchor) < 2:
+            continue
+        optimizer.zero_grad()
+        anchor_out = model.forward_one(anchor)
+        positive_out = model.forward_one(positive)
+        negative_out = model.forward_one(negative)
+        loss = criterion(anchor_out, positive_out, negative_out)
+        loss.backward()
+        optimizer.step()
+        trained += 1
+    return trained
 
-      # Evaluate on validation data after each epoch - test set stays untouched
+
+def main():
+    train_path = "train_data/train_0.pt"
+    test_path = "test_data/test_0.pt"
+    X_train_full, Y_train_full = load_data(train_path)
+    X_test, Y_test = load_data(test_path)
+
+    val_split = 0.15
+    indices = np.arange(len(X_train_full))
+    train_idx, val_idx = train_test_split(indices, test_size=val_split, stratify=Y_train_full.numpy(), random_state=42)
+    X_train, Y_train = X_train_full[train_idx], Y_train_full[train_idx]
+    X_val, Y_val = X_train_full[val_idx], Y_train_full[val_idx]
+
+    train_dataset = TripletGestureDataset(X_train, Y_train)
+    val_dataset = PairGestureDataset(X_val, Y_val)
+    test_dataset = PairGestureDataset(X_test, Y_test)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    # Initialize the model, loss function, and optimizer
+    model = SiameseNetwork(input_dim, embedding_dim)
+    criterion = TripletLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Training and evaluation
+    for epoch in range(num_epochs):
+        train_dataset.resample()  # fresh random triplets each epoch, not just once at startup
+        train_epoch(model, train_loader, criterion, optimizer)
+
+        # Evaluate on validation data after each epoch - test set stays untouched
+        model.eval()
+        val_dataset.resample()
+        with torch.no_grad():
+            val_scores, val_labels = [], []
+            for x1, x2, label in val_loader:
+                output1, output2 = model(x1, x2)
+                similarity_scores = F.cosine_similarity(output1, output2)
+                val_scores.extend(similarity_scores.cpu().numpy())
+                val_labels.extend(label.cpu().numpy())
+
+        val_preds = [1 if score > threshold else 0 for score in val_scores]
+        val_accuracy = (accuracy_score(val_labels, val_preds) * 100)
+        val_auc_roc = roc_auc_score(val_labels, val_scores)
+        val_precision = precision_score(val_labels, val_preds)
+        val_recall = recall_score(val_labels, val_preds)
+        print(
+            f"Epoch [{epoch + 1}/{num_epochs}], Val Accuracy: {val_accuracy:.4f}, AUC-ROC: {val_auc_roc:.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}")
+
+    # Final, one-time evaluation on the untouched test set
     model.eval()
-    val_dataset.resample()
     with torch.no_grad():
-        val_scores, val_labels = [], []
-        for x1, x2, label in val_loader:
+        test_scores, test_labels = [], []
+        for x1, x2, label in test_loader:
             output1, output2 = model(x1, x2)
             similarity_scores = F.cosine_similarity(output1, output2)
-            val_scores.extend(similarity_scores.cpu().numpy())
-            val_labels.extend(label.cpu().numpy())
+            test_scores.extend(similarity_scores.cpu().numpy())
+            test_labels.extend(label.cpu().numpy())
 
-    val_preds = [1 if score > threshold else 0 for score in val_scores]
-    val_accuracy = (accuracy_score(val_labels, val_preds) * 100)
-    val_auc_roc = roc_auc_score(val_labels, val_scores)
-    val_precision = precision_score(val_labels, val_preds)
-    val_recall = recall_score(val_labels, val_preds)
-    print(
-        f"Epoch [{epoch + 1}/{num_epochs}], Val Accuracy: {val_accuracy:.4f}, AUC-ROC: {val_auc_roc:.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}")
-    # Final, one-time evaluation on the untouched test set
-model.eval()
-with torch.no_grad():
-    test_scores, test_labels = [], []
-    for x1, x2, label in test_loader:
-        output1, output2 = model(x1, x2)
-        similarity_scores = F.cosine_similarity(output1, output2)
-        test_scores.extend(similarity_scores.cpu().numpy())
-        test_labels.extend(label.cpu().numpy())
+        test_preds = [1 if score > threshold else 0 for score in test_scores]
+        test_accuracy = (accuracy_score(test_labels, test_preds) * 100)
+        test_auc_roc = roc_auc_score(test_labels, test_scores)
+        test_precision = precision_score(test_labels, test_preds)
+        test_recall = recall_score(test_labels, test_preds)
+        print(
+            f"\nFinal Test - Accuracy: {test_accuracy:.4f}, AUC-ROC: {test_auc_roc:.4f}, Precision: {test_precision:.4f}, Recall: {test_recall:.4f}")
 
-    test_preds = [1 if score > threshold else 0 for score in test_scores]
-    test_accuracy = (accuracy_score(test_labels, test_preds) * 100)
-    test_auc_roc = roc_auc_score(test_labels, test_scores)
-    test_precision = precision_score(test_labels, test_preds)
-    test_recall = recall_score(test_labels, test_preds)
-    print(
-        f"\nFinal Test - Accuracy: {test_accuracy:.4f}, AUC-ROC: {test_auc_roc:.4f}, Precision: {test_precision:.4f}, Recall: {test_recall:.4f}")
+    # Extract the model's state dictionary, convert to JSON serializable format
+    state_dict = model.state_dict()
+    serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
 
-# Extract the model's state dictionary, convert to JSON serializable format
-state_dict = model.state_dict()
-serializable_state_dict = {key: value.tolist() for key, value in state_dict.items()}
+    # Store state dictionary
+    with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
+        json.dump(serializable_state_dict, f)
 
-# Store state dictionary
-with open(SAVE_MODEL_PATH + SAVE_MODEL_FILENAME, "w") as f:
-    json.dump(serializable_state_dict, f)
+    print("\n--- Model Training Complete ---")
+    print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
 
-print("\n--- Model Training Complete ---")
-print("\nModel weights saved to ", SAVE_MODEL_PATH + SAVE_MODEL_FILENAME)
+
+if __name__ == "__main__":
+    main()

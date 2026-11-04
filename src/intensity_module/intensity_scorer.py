@@ -86,6 +86,9 @@ MAX_GLITCH_S = 0.25
 # (1110 deg/s, 1.24 m/s), for glitches the repair cannot pair up.
 MAX_ANGULAR_SPEED = 1200.0
 MAX_OPPOSITION_SPEED = 1.3
+# Motion faster than this (Hz) is filtered out before resampling: deliberate finger movement
+# tops out around 5 Hz, faster wiggles are tremor or tracking jitter.
+LOWPASS_HZ = 6.0
 # Untrimmed clips start with roughly this much idle hand before the movement begins.
 IDLE_START_S = 0.5
 
@@ -243,6 +246,24 @@ def repair_glitches(frames, fps):
             x[start + 1:end] = np.interp(np.arange(start + 1, end), [start, end], [x[start], x[end]])
             i = back + 1
     return out
+
+
+def lowpass(frames, fps, cutoff=None):
+    """Remove motion faster than voluntary finger movement (tremor, tracking jitter).
+
+    A Gaussian smoothing whose response is -3 dB at LOWPASS_HZ, run before resampling so fast
+    jitter neither scores as maximum effort nor aliases at SAMPLE_RATE_HZ. Speed and movement
+    size shrink together, so quickness of ordinary movement is unchanged.
+    """
+    cutoff = LOWPASS_HZ if cutoff is None else cutoff
+    sigma = np.sqrt(np.log(2.0)) / (2.0 * np.pi * cutoff) * fps          # in frames
+    if len(frames) < 2 or sigma < 0.5:
+        return frames
+    r = int(np.ceil(3.0 * sigma))
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
+    k /= k.sum()
+    padded = np.pad(np.asarray(frames, dtype=np.float64), ((r, r), (0, 0)), mode="edge")
+    return np.stack([np.convolve(padded[:, j], k, mode="valid") for j in range(padded.shape[1])], axis=1)
 
 
 def resample(frames, fps, rate=SAMPLE_RATE_HZ):
@@ -410,7 +431,7 @@ def windows(frames, fps, window_s=WINDOW_S, lookback_s=LOOKBACK_S, rate=SAMPLE_R
     overlapping the one before it, so the final movement is scored as score() would score it.
     Each window also carries the finger moves that ended within it ("moves").
     """
-    samples = resample(repair_glitches(frames, fps), fps, rate)
+    samples = resample(lowpass(repair_glitches(frames, fps), fps), fps, rate)
     angular, opposition = step_speeds(samples, rate)
     if len(angular) == 0:
         return []
@@ -680,7 +701,7 @@ def score(frames, fps=None, calibration=None, confidence=None, gesture=None, tim
     frames, fps = _timing(frames, fps, timestamps)
     cal = calibration if calibration is not None else load_calibration()
     rate = cal["sample_rate_hz"]
-    samples = resample(repair_glitches(frames, fps), fps, rate)
+    samples = resample(lowpass(repair_glitches(frames, fps), fps), fps, rate)
     angular, opposition = step_speeds(samples, rate)
     if len(angular) == 0:
         raise ValueError("need at least two frames to measure motion")

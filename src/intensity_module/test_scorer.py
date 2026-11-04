@@ -171,6 +171,20 @@ class ScoreTests(unittest.TestCase):
 
         self.assertAlmostEqual(big["intensity"], small["intensity"], delta=0.05)
 
+    def test_jitter_faster_than_voluntary_movement_is_filtered_out(self):
+        # Wiggling a finger faster scores higher up to about 3 Hz, but motion faster than a person
+        # moves on purpose (tremor, tracking jitter) is filtered out rather than scoring as maximum.
+        cal = load_calibration()
+        def median_score(hz):
+            frames = oscillate([2, 4], 13.0, hz, seconds=4.0)
+            return float(np.median([r["intensity"] for r in score_recording(frames, 72.0, cal)[2:]]))
+        slow, normal, fast = median_score(1.0), median_score(2.0), median_score(3.0)
+
+        self.assertLess(slow, normal)
+        self.assertLess(normal, fast)
+        self.assertGreater(fast, 0.75)
+        self.assertLess(max(median_score(10.0), median_score(12.0)), 0.05)
+
     def test_faster_repetition_scores_higher(self):
         slow = score(oscillate(THUMB, 25.0, 0.7), 72.0, self.cal)
         fast = score(oscillate(THUMB, 25.0, 3.0), 72.0, self.cal)

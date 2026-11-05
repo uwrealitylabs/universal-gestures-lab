@@ -449,7 +449,9 @@ def main():
             data = json.loads(text)
             locations = source_locations(text)
 
-        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        # ValueError includes JSON syntax/encoding errors and Python's integer
+        # digit limit. RecursionError can arise in either parsing pass.
+        except (OSError, ValueError, RecursionError) as error:
             add_issue(
                 issues, "error", short_path,
                 f"Could not read JSON: {error}",

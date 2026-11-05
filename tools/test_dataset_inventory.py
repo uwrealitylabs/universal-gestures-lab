@@ -10,6 +10,36 @@ SCRIPT = Path(__file__).with_name('dataset_inventory.py')
 
 
 class InventoryTests(unittest.TestCase):
+    def test_resource_limited_json_does_not_abort_scan(self):
+        fixtures = {
+            'oversized_integer': '9' * 5000,
+            'deep_nesting': '[' * 5000 + '0' + ']' * 5000,
+        }
+        for name, contents in fixtures.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                data = root / 'data'
+                data.mkdir()
+                problem = data / 'a_problem.json'
+                problem.write_text(contents, encoding='utf-8')
+                valid = {'confidence': 1, 'sequenceData': [[0] * 17] * 15}
+                (data / 'z_valid.json').write_text(json.dumps(valid), encoding='utf-8')
+                report = root / 'report.json'
+                result = subprocess.run(
+                    [sys.executable, '-X', 'int_max_str_digits=4300',
+                     str(SCRIPT), str(data), '--report', str(report)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(report.exists())
+                output = json.loads(report.read_text(encoding='utf-8'))
+                self.assertEqual(output['summary']['file_count'], 2)
+                self.assertEqual(output['summary']['recording_count'], 1)
+                self.assertEqual(output['summary']['error_count'], 1)
+                self.assertEqual(output['invalid_files'], ['a_problem.json'])
+                self.assertEqual(output['groups']['.']['confidence_label_counts']['1'], 1)
+                self.assertEqual(problem.read_text(encoding='utf-8'), contents)
+
     def test_scan_continues_and_reports_locations(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -47,6 +77,22 @@ class InventoryTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(SCRIPT), str(root), '--report', str(source)], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(source.read_text(encoding='utf-8'), '[]')
+
+    def test_existing_report_outside_scan_is_preserved(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data = root / 'data'
+            data.mkdir()
+            report = root / 'existing-report.json'
+            original = '{"keep": "existing report"}'
+            report.write_text(original, encoding='utf-8')
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), str(data), '--report', str(report)],
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Report already exists', result.stderr)
+            self.assertEqual(report.read_text(encoding='utf-8'), original)
 
 
 if __name__ == '__main__':

@@ -1,16 +1,15 @@
-jupyter==1.0.0
-# matplotlib==3.2.2
+# Tested together end to end (Unity 6.3 LTS client -> this server -> ONNX -> Barracuda).
+# Use Python 3.12: torch 2.4.1 has no wheels for 3.13+. See .python-version.
+torch==2.4.1
+torchvision==0.19.1
+onnx==1.22.0
+# onnxscript >= 0.4 drops torch.onnx.dynamo_export support (the server would return 500 "Model training failed")
+onnxscript==0.3.2
+onnxruntime==1.19.2
 numpy==2.0.0
 pandas==2.2.2
-pip == 22.3.1
-torch==2.4.1
-torchaudio
-torchtext
-torchvision
-onnxscript
-onnxruntime==1.19.2
-flask
-python-dotenv==1.0.1
 scikit-learn==1.5.2
 scipy==1.14.1
+flask==3.1.3
+python-dotenv==1.0.1
 psycopg2-binary==2.9.10

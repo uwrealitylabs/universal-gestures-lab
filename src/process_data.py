@@ -37,10 +37,12 @@ def split(dire = "src/data"):
 
     print("Processing training data")
     train_tensor = torch.tensor(train)
+    os.makedirs("src/train_data", exist_ok=True)  # gitignored, so missing in a fresh clone
     torch.save(train_tensor, "src/train_data/train_0.pt")
     
     print("Processing testing data")
     test_tensor = torch.tensor(test)
+    os.makedirs("src/test_data", exist_ok=True)
     torch.save(test_tensor, "src/test_data/test_0.pt")
     
 def main():

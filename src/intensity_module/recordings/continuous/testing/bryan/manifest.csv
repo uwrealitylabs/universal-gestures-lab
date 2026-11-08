@@ -1,0 +1,22 @@
+file,source_file,session,gesture,condition,level,take,frames,fps,trimmed_start_s,reps_per_min,notes
+finger_gun/finger_gun_level1_take1_2026-11-03_19-56-04.json,_2026-11-03_19-56-04.json,2026-11-03-evening,finger_gun,level,1,1,721,72.1,0,19,
+finger_gun/finger_gun_level2_take1_2026-11-03_20-05-57.json,_2026-11-03_20-05-57.json,2026-11-03-evening,finger_gun,level,2,1,699,69.9,0,95,
+finger_gun/finger_gun_level3_take1_2026-11-03_20-09-29.json,_2026-11-03_20-09-29.json,2026-11-03-evening,finger_gun,level,3,1,721,72.1,0,189,
+finger_gun/finger_gun_level4_take1_2026-11-03_19-56-53.json,_2026-11-03_19-56-53.json,2026-11-03-evening,finger_gun,level,4,1,721,72.1,0,278,
+fist/fist_level1_take1_2026-11-03_00-31-18.json,_2026-11-03_00-31-18.json,2026-11-03,fist,level,1,1,721,72.1,0,19,pauses between reps
+fist/fist_level2_take1_2026-11-03_00-31-34.json,_2026-11-03_00-31-34.json,2026-11-03,fist,level,2,1,722,72.2,0,63,
+fist/fist_level3_take1_2026-11-03_00-31-49.json,_2026-11-03_00-31-49.json,2026-11-03,fist,level,3,1,721,72.1,0,82,
+fist/fist_level4_take1_2026-11-03_00-32-09.json,_2026-11-03_00-32-09.json,2026-11-03,fist,level,4,1,722,72.2,0,215,"tracking glitches during the fast fists, as in the 2026-11-02 level-4 takes"
+controls/still_take1_2026-11-03_00-32-31.json,_2026-11-03_00-32-31.json,2026-11-03,none,still,,1,721,72.1,0,,hand held still
+controls/finger_gun_pose_wrist_only_take1_2026-11-03_00-32-46.json,_2026-11-03_00-32-46.json,2026-11-03,finger_gun,wrist_only,,1,722,72.2,0,,"fingers held in gun pose, arm moving"
+pinch/pinch_level1_take1_2026-11-03_19-57-10.json,_2026-11-03_19-57-10.json,2026-11-03-evening,pinch,level,1,1,721,72.1,0,19,index fingertip tapped to thumb tip
+pinch/pinch_level2_take1_2026-11-03_19-57-25.json,_2026-11-03_19-57-25.json,2026-11-03-evening,pinch,level,2,1,720,72.0,0,38,index fingertip tapped to thumb tip
+pinch/pinch_level3_take1_2026-11-03_19-57-41.json,_2026-11-03_19-57-41.json,2026-11-03-evening,pinch,level,3,1,722,72.2,0,69,index fingertip tapped to thumb tip
+pinch/pinch_level4_take1_2026-11-03_19-57-56.json,_2026-11-03_19-57-56.json,2026-11-03-evening,pinch,level,4,1,721,72.1,0,303,index fingertip tapped to thumb tip
+peace_sign/peace_sign_level1_take1_2026-11-03_00-47-18.json,_2026-11-03_00-47-18.json,2026-11-03,peace_sign,level,1,1,721,72.1,0,32,"index and middle fingers bent down and up from a peace sign; unseen gesture, never used for design or calibration"
+peace_sign/peace_sign_level2_take1_2026-11-03_00-47-34.json,_2026-11-03_00-47-34.json,2026-11-03,peace_sign,level,2,1,722,72.2,0,88,"index and middle fingers bent down and up from a peace sign; unseen gesture, never used for design or calibration"
+peace_sign/peace_sign_level3_take1_2026-11-03_00-47-48.json,_2026-11-03_00-47-48.json,2026-11-03,peace_sign,level,3,1,722,72.2,0,126,"index and middle fingers bent down and up from a peace sign; unseen gesture, never used for design or calibration"
+peace_sign/peace_sign_level4_take1_2026-11-03_00-48-06.json,_2026-11-03_00-48-06.json,2026-11-03,peace_sign,level,4,1,722,72.2,0,246,"index and middle fingers bent down and up from a peace sign; unseen gesture, never used for design or calibration"
+finger_gun/finger_gun_single_quick_take1_2026-11-03_01-04-00.json,_2026-11-03_01-04-00.json,2026-11-03-final,finger_gun,single_quick,,1,721,72.1,0,,one sharp fire at a time with pauses of up to 1.6 s
+finger_gun/finger_gun_single_slow_take1_2026-11-03_01-05-17.json,_2026-11-03_01-05-17.json,2026-11-03-final,finger_gun,single_slow,,1,722,72.2,0,,one slow fire (about 1 s) at a time with pauses of about 2 s; redo of a wrong first attempt
+controls/finger_gun_pose_wrist_only_vigorous_take1_2026-11-03_01-04-31.json,_2026-11-03_01-04-31.json,2026-11-03-final,finger_gun,wrist_only,,1,722,72.2,0,,"fingers held in gun pose, whole arm moved vigorously"

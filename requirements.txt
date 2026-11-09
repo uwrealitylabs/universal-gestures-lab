@@ -8,7 +8,9 @@ torchaudio
 torchtext
 torchvision
 onnxscript
+onnx==1.17.0
 onnxruntime==1.19.2
+pytorch-metric-learning==2.9.0
 flask
 python-dotenv==1.0.1
 scikit-learn==1.5.2

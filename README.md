@@ -97,6 +97,6 @@ They also cover the legacy `fewshottripletloss.py` trainer. GitHub Actions runs 
 
 ## Before deploying the exported model
 
-- **Calibrate the cutoff.** The exported cutoff is the median of the cutoffs the cross-validation fold models chose. Those fold cutoffs span about 0.27–0.84, and the median was not measured on the exported model. Calibrate it on held-out recordings, with as many enrolled gestures as users will actually teach.
-- **Measure new users.** The committed results were run without `--test-person`, so every person's clips helped train the model. Run the leave-one-person-out evaluation (`--test-person <name>` for each person) before reporting new-user performance. Also record negatives for every person: edy has none, so edy's false-trigger rate is measured on bryan's negatives.
+- **Calibrate the cutoff.** The exported cutoff is the median of the cutoffs the cross-validation fold models chose. Those fold cutoffs span about 0.28–0.88, and the median was not measured on the exported model. Calibrate it on held-out recordings, with as many enrolled gestures as users will actually teach.
+- **Measure new users.** The committed results were run without `--test-person`, so every person's clips helped train the model. Run the leave-one-person-out evaluation (`--test-person <name>` for each person) before reporting new-user performance. Negatives are now recorded for every person, so edy's false-trigger rate is measured on edy's own negatives.
 - **Smoke-test in the headset.** Check that Unity reproduces `siamese_fixture.json`, then try enrolling gestures live.
